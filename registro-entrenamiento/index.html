@@ -1,42 +1,44 @@
-<title>Registro de Entrenamiento</title>
+<title>NEXØ</title>
 <meta name="claude:viewport-fit-sides" content="cover">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700&family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=Michroma&display=swap">
 <style>
-/* Layout: cabecera fija con una pestaña por entidad del diagrama E-R; contenido en una columna ancha; las fichas (sesión, deportista, formularios) se abren en un panel lateral. */
+/* Identidad NEXØ: negro #0A0B0F, blanco hielo #EEF2F5 y verde neón #C8FF2E (violeta #5B2EFF sobre fondo claro).
+   Michroma para la marca y los títulos, JetBrains Mono para todo lo demás.
+   Layout: cabecera fija con el logotipo y una pestaña por sección; contenido en una columna ancha; las fichas se abren en un panel lateral. */
 :root{
-  --bg:#eef1f5; --surface:#ffffff; --surface-2:#f5f7fa; --ink:#132030; --muted:#5a6879; --line:#d6dde6;
-  --accent:#1c56c9; --accent-ink:#ffffff; --accent-soft:#e3ebfb;
-  --bike:#c4731a; --canoe:#0d8580; --run:#cf4436;
-  --ok:#1f8a4c; --warn:#b7791f; --bad:#c23b32; --scrim:rgba(14,22,33,.42);
-  --z1:#7fa7c9; --z2:#3f8f6b; --z3:#c9a227; --z4:#d9762b; --z5:#c23b32;
-  --f-display:"Barlow Condensed","Arial Narrow",Arial,sans-serif;
-  --f-body:"IBM Plex Sans",system-ui,-apple-system,"Segoe UI",sans-serif;
-  --f-mono:"IBM Plex Mono",ui-monospace,SFMono-Regular,Menlo,monospace;
+  --bg:#F2F3F5; --surface:#FFFFFF; --surface-2:#F6F7F9; --ink:#0A0B0F; --muted:#565D6B; --line:#DCDFE5;
+  --accent:#5B2EFF; --accent-ink:#FFFFFF; --accent-soft:#ECE6FF;
+  --bike:#C4621A; --canoe:#0B8A8F; --run:#D1365A;
+  --ok:#1F8A4C; --warn:#A86B12; --bad:#C23B32; --scrim:rgba(10,11,15,.45);
+  --z1:#7C9CC4; --z2:#3F8F6B; --z3:#C9A227; --z4:#D9762B; --z5:#C23B32;
+  --f-display:"Michroma","Eurostile","Arial Black",system-ui,sans-serif;
+  --f-body:"JetBrains Mono",ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+  --f-mono:"JetBrains Mono",ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
 }
 @media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
-  --bg:#0e141c; --surface:#161f2a; --surface-2:#1b2633; --ink:#e4eaf2; --muted:#94a2b3; --line:#2a3646;
-  --accent:#6f9dff; --accent-ink:#0b1320; --accent-soft:#1d2c46;
-  --bike:#e8a34e; --canoe:#3cc4bc; --run:#f27b6c;
-  --ok:#4cc27e; --warn:#e2ad4c; --bad:#f07267; --scrim:rgba(0,0,0,.6);
-  --z1:#8db6da; --z2:#58b88c; --z3:#e2bf45; --z4:#ef9350; --z5:#f07267; color-scheme:dark}}
+  --bg:#0A0B0F; --surface:#13151B; --surface-2:#1A1D24; --ink:#EEF2F5; --muted:#8A93A0; --line:#2A2F39;
+  --accent:#C8FF2E; --accent-ink:#0A0B0F; --accent-soft:#1F2610;
+  --bike:#FF8A3D; --canoe:#2EE6FF; --run:#FF5C8A;
+  --ok:#4CC27E; --warn:#E2AD4C; --bad:#F07267; --scrim:rgba(0,0,0,.65);
+  --z1:#8DB6DA; --z2:#58B88C; --z3:#E2BF45; --z4:#EF9350; --z5:#F07267; color-scheme:dark}}
 :root[data-theme="dark"]{
-  --bg:#0e141c; --surface:#161f2a; --surface-2:#1b2633; --ink:#e4eaf2; --muted:#94a2b3; --line:#2a3646;
-  --accent:#6f9dff; --accent-ink:#0b1320; --accent-soft:#1d2c46;
-  --bike:#e8a34e; --canoe:#3cc4bc; --run:#f27b6c;
-  --ok:#4cc27e; --warn:#e2ad4c; --bad:#f07267; --scrim:rgba(0,0,0,.6);
-  --z1:#8db6da; --z2:#58b88c; --z3:#e2bf45; --z4:#ef9350; --z5:#f07267; color-scheme:dark}
+  --bg:#0A0B0F; --surface:#13151B; --surface-2:#1A1D24; --ink:#EEF2F5; --muted:#8A93A0; --line:#2A2F39;
+  --accent:#C8FF2E; --accent-ink:#0A0B0F; --accent-soft:#1F2610;
+  --bike:#FF8A3D; --canoe:#2EE6FF; --run:#FF5C8A;
+  --ok:#4CC27E; --warn:#E2AD4C; --bad:#F07267; --scrim:rgba(0,0,0,.65);
+  --z1:#8DB6DA; --z2:#58B88C; --z3:#E2BF45; --z4:#EF9350; --z5:#F07267; color-scheme:dark}
 
 *{box-sizing:border-box}
-body{background:var(--bg);color:var(--ink);font:15px/1.5 var(--f-body)}
+body{background:var(--bg);color:var(--ink);font:14px/1.55 var(--f-body)}
 body::before{content:"";position:fixed;inset:0 0 auto;height:env(safe-area-inset-top,0px);z-index:10;background:var(--surface)}
 .wrap{max-width:1120px;margin:0 auto;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
 .mono,.num{font-family:var(--f-mono);font-variant-numeric:tabular-nums}
 .muted{color:var(--muted)}
-h1,h2,h3{font-family:var(--f-display);font-weight:700;letter-spacing:.01em;text-wrap:balance;margin:0}
-h2{font-size:28px;line-height:1.1;text-transform:uppercase}
-h3{font-size:19px;line-height:1.2;text-transform:uppercase;letter-spacing:.03em}
+h1,h2,h3{font-family:var(--f-display);font-weight:400;letter-spacing:.03em;text-wrap:balance;margin:0}
+h2{font-size:22px;line-height:1.2;text-transform:uppercase}
+h3{font-size:14px;line-height:1.3;text-transform:uppercase;letter-spacing:.06em}
 .eyebrow{font:500 12px/1.3 var(--f-mono);letter-spacing:.06em;text-transform:uppercase;color:var(--muted)}
 a{color:var(--accent)}
 :focus-visible{outline:2px solid var(--accent);outline-offset:2px}
@@ -45,9 +47,11 @@ p{margin:0}
 header.top{position:sticky;top:env(safe-area-inset-top,0px);z-index:5;background:var(--surface);border-bottom:1px solid var(--line)}
 .top-inner{display:flex;align-items:center;flex-wrap:wrap;column-gap:16px;row-gap:6px;padding-top:12px}
 .brand{display:flex;align-items:center;gap:12px;min-width:0}
-.brand h1{font-size:25px;line-height:1;text-transform:uppercase}
-.stripes{display:flex;gap:3px}
-.stripes i{width:6px;height:22px;border-radius:1px;transform:skewX(-14deg)}
+.brand h1{font-size:21px;line-height:1;letter-spacing:.06em}
+.brand .tag{font:600 11px var(--f-mono);letter-spacing:.2em;text-transform:uppercase;color:var(--muted);white-space:nowrap}
+@media (max-width:620px){.brand .tag{display:none}}
+.logo{flex:none;display:block}
+.logo .ring{fill:none;stroke:var(--ink)} .logo .cut{stroke:var(--accent);stroke-linecap:round} .logo .dot{fill:var(--accent)}
 .status{margin-left:auto;display:flex;align-items:center;gap:10px;flex-wrap:wrap}
 .role{font:600 12px var(--f-mono);letter-spacing:.06em;text-transform:uppercase;padding:3px 9px;border-radius:99px;background:var(--accent-soft);color:var(--accent)}
 .role:empty{display:none}
@@ -56,7 +60,7 @@ header.top{position:sticky;top:env(safe-area-inset-top,0px);z-index:5;background
 .mode.shared i{background:var(--ok)} .mode.local i{background:var(--warn)}
 nav.tabs{display:flex;gap:2px;width:100%;overflow-x:auto;scrollbar-width:none}
 nav.tabs::-webkit-scrollbar{display:none}
-nav.tabs a{font:600 16px var(--f-display);letter-spacing:.07em;text-transform:uppercase;color:var(--muted);text-decoration:none;padding:9px 12px 8px;border-bottom:3px solid transparent;white-space:nowrap}
+nav.tabs a{font:400 12px var(--f-display);letter-spacing:.1em;text-transform:uppercase;color:var(--muted);text-decoration:none;padding:9px 12px 8px;border-bottom:3px solid transparent;white-space:nowrap}
 nav.tabs a:hover{color:var(--ink)}
 nav.tabs a[aria-current="page"]{color:var(--ink);border-color:var(--accent)}
 
@@ -138,25 +142,25 @@ input[type=checkbox]{width:auto;accent-color:var(--accent)}
 .step .d{color:var(--muted);font-size:13.5px}
 @media (max-width:560px){.step{grid-template-columns:28px minmax(0,1fr)}.step .btn{grid-column:2;justify-self:start}}
 .empty{border:1.5px dashed var(--line);border-radius:10px;padding:28px 20px;text-align:center;color:var(--muted)}
-.empty strong{display:block;color:var(--ink);font:700 20px var(--f-display);text-transform:uppercase;letter-spacing:.03em;margin-bottom:4px}
+.empty strong{display:block;color:var(--ink);font:400 15px var(--f-display);text-transform:uppercase;letter-spacing:.06em;margin-bottom:6px}
 .empty .btn{margin-top:12px}
 .notice{display:flex;gap:12px;align-items:center;justify-content:space-between;flex-wrap:wrap;background:var(--accent-soft);border:1px solid color-mix(in srgb,var(--accent) 35%,var(--line));border-radius:10px;padding:12px 16px;margin-bottom:18px}
 
 .athletes{display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:14px}
 .ath{display:grid;grid-template-columns:auto minmax(0,1fr);gap:12px 14px;text-align:left;font:inherit;color:inherit;cursor:pointer;background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:16px;border-top:4px solid var(--sp,var(--line))}
 .ath:hover{border-color:var(--muted);border-top-color:var(--sp,var(--muted))}
-.ath h3{font-size:20px;text-transform:none;letter-spacing:0;overflow:hidden;text-overflow:ellipsis}
+.ath h3{font-size:15px;text-transform:none;letter-spacing:.02em;overflow:hidden;text-overflow:ellipsis}
 .ath dl{grid-column:1/-1;display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;margin:0}
 .ath dt{font:500 10.5px var(--f-mono);letter-spacing:.06em;text-transform:uppercase;color:var(--muted)}
 .ath dd{margin:0;font:500 14px var(--f-mono);font-variant-numeric:tabular-nums;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.avatar{width:52px;height:52px;border-radius:50%;object-fit:cover;display:grid;place-items:center;font:700 19px var(--f-display);background:color-mix(in srgb,var(--sp,var(--muted)) 18%,var(--surface));color:var(--sp,var(--muted));flex:none}
-.avatar.lg{width:76px;height:76px;font-size:28px}
+.avatar{width:52px;height:52px;border-radius:50%;object-fit:cover;display:grid;place-items:center;font:400 15px var(--f-display);background:color-mix(in srgb,var(--sp,var(--muted)) 18%,var(--surface));color:var(--sp,var(--muted));flex:none}
+.avatar.lg{width:76px;height:76px;font-size:21px}
 .loads{display:grid;grid-template-columns:repeat(auto-fill,minmax(290px,1fr));gap:14px}
 .load{display:grid;gap:8px;cursor:pointer;border-top:4px solid var(--sp,var(--line));padding:14px 14px 12px;min-width:0}
 .load:hover{border-color:var(--muted);border-top-color:var(--sp,var(--muted))}
 .load-head{display:flex;gap:10px;align-items:center}
 .load-head strong{display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.avatar.sm{width:36px;height:36px;font-size:14px}
+.avatar.sm{width:36px;height:36px;font-size:11px}
 .chart.mini text{font-size:10px}
 .part-grid,.part-head{display:grid;grid-template-columns:minmax(0,1.25fr) minmax(0,1fr) minmax(0,.85fr) minmax(0,.7fr) minmax(0,.7fr) 34px;gap:6px;align-items:center}
 .p-vals{display:contents}
@@ -280,21 +284,22 @@ td.num,th.num{text-align:right}
 .toast.bad{background:var(--bad);color:#fff}
 .loading{padding:60px 0;text-align:center;color:var(--muted);font-family:var(--f-mono)}
 .welcome{max-width:640px;margin:24px auto;display:grid;gap:18px}
+.brand-hero{display:flex;align-items:center;gap:16px}
 @media (prefers-reduced-motion:no-preference){.sheet-panel{animation:slide .18s ease-out}@keyframes slide{from{transform:translateX(24px);opacity:.6}}}
 </style>
 
 <header class="top">
   <div class="wrap top-inner">
     <div class="brand">
-      <span class="stripes" aria-hidden="true"><i style="background:var(--bike)"></i><i style="background:var(--canoe)"></i><i style="background:var(--run)"></i></span>
-      <h1>Registro de Entrenamiento</h1>
+      <svg class="logo" width="30" height="30" viewBox="0 0 120 120" aria-hidden="true"><circle class="ring" cx="60" cy="60" r="32" stroke-width="12"></circle><line class="cut" x1="30" y1="90" x2="90" y2="30" stroke-width="10"></line><circle class="dot" cx="18" cy="102" r="9"></circle><circle class="dot" cx="102" cy="18" r="9"></circle></svg>
+      <h1>NEXØ</h1><span class="tag">Piragüismo · Ciclismo · Fondo</span>
     </div>
     <div class="status"><span class="role" id="role"></span><div class="mode" id="mode"><i></i><span>Conectando…</span></div></div>
     <nav class="tabs" aria-label="Secciones" id="tabs"></nav>
   </div>
 </header>
 
-<main class="wrap" id="main"><div class="loading">Cargando registro…</div></main>
+<main class="wrap" id="main"><div class="loading">Cargando NEXØ…</div></main>
 
 <div class="sheet" id="sheet" hidden>
   <div class="sheet-backdrop" data-action="close-sheet"></div>
@@ -701,7 +706,7 @@ function welcomeHTML(){
   if(myDoc&&myDoc.pendiente)return `<div class="welcome card"><span class="eyebrow">Solicitud enviada</span><h2>Esperando a tu entrenador</h2>
     <p>Has enviado el código <span class="code">${esc(myDoc.codigo)}</span>. Tu ficha aparecerá aquí cuando tu entrenador o entrenadora abra la aplicación y confirme la vinculación.</p>
     <div class="actions-row"><button class="btn danger" data-action="cancel-claim">Cancelar solicitud</button></div></div>`;
-  return `<div class="welcome"><div><span class="eyebrow">Deportista</span><h2>Vincula tu cuenta</h2><p class="muted" style="margin-top:6px">Solo verás tus propios datos: tus sesiones, tus tests y tus zonas. El resto del grupo no puede verlos.</p></div>
+  return `<div class="welcome"><div class="brand-hero"><svg class="logo" width="64" height="64" viewBox="0 0 120 120" role="img" aria-label="NEXØ"><circle class="ring" cx="60" cy="60" r="32" stroke-width="12"></circle><line class="cut" x1="30" y1="90" x2="90" y2="30" stroke-width="10"></line><circle class="dot" cx="18" cy="102" r="9"></circle><circle class="dot" cx="102" cy="18" r="9"></circle></svg><p class="muted">Entrenador y deportista, conectados.</p></div><div><span class="eyebrow">Deportista</span><h2>Vincula tu cuenta</h2><p class="muted" style="margin-top:6px">Solo verás tus propios datos: tus sesiones, tus tests y tus zonas. El resto del grupo no puede verlos.</p></div>
     <form class="card" data-form="claim" novalidate><h3>Tengo un código de mi entrenador</h3>
       ${field('Código de vinculación','<input id="cl-code" name="codigo" class="mono" maxlength="8" autocomplete="off" placeholder="K7M2QD" style="letter-spacing:.15em;text-transform:uppercase">','Te lo da tu entrenador desde tu ficha.')}
       <p class="form-err"></p><div class="form-actions"><button type="submit" class="btn primary">Enviar código</button></div></form>
@@ -1124,7 +1129,7 @@ function renderNav(){
 function render(){
   if(!isCoach&&view==='entrenadores')view='panel';
   const m=$('#main');
-  if(!store||!ready.entrenadores||!ready.atletas){m.innerHTML='<div class="loading">Cargando registro…</div>';return}
+  if(!store||!ready.entrenadores||!ready.atletas){m.innerHTML='<div class="loading">Cargando NEXØ…</div>';return}
   if(!isCoach&&!S.deportistas.length){$('#tabs').innerHTML='';m.innerHTML=welcomeHTML();return}
   renderNav();
   const banner=viewAs?`<div class="notice preview"><span>Estás viendo la aplicación como la ve <strong>${esc((S.deportistas[0]||{}).nombre||'')}</strong>: solo sus datos, sin el resto del grupo ni la pestaña de entrenadores.</span><button class="btn small primary" data-action="exit-view-as">Volver a la vista de entrenador</button></div>`:'';
