@@ -874,6 +874,9 @@ function realForm(s,d){const ts=tareasOf(s);const r=s.realizado||{};const rt=r.t
     ${field('FC media (ppm)',`<input id="${pre}-fc" name="${pre}-fc" type="number" min="30" max="230" inputmode="numeric" value="${esc(x.fc??'')}">`)}
     ${field('Distancia (m)',`<input id="${pre}-dist" name="${pre}-dist" type="number" min="0" step="any" inputmode="decimal" value="${esc(x.distancia??'')}">`)}`;
   const rpe0=r.rpe||s.rpe||5;
+  // Registros antiguos: las tareas sin minutos se guardaban con lo previsto aunque el reloj marcara otra cosa.
+  const legacy=!!r.traza&&r.duracion!=null&&Math.abs(r.duracion-r.traza.t[r.traza.t.length-1]/60)>1&&ts.every(t=>{const x=rt[t.id];const pl=totalTarea(t);return !x||x.estado==='no'||(!x.auto&&pl!=null&&Math.abs((+x.duracion)-Math.round(pl*10)/10)<0.05)});
+  const durVal=x=>x.auto||(legacy&&x.estado!=='no')?'':(x.duracion??'');
   return `<form data-form="real" class="subform real-form" id="real-form" novalidate><input type="hidden" name="sid" value="${esc(s.id)}">
     <div><h3>Lo que he hecho</h3><p class="muted" style="font-size:13.5px;margin-top:2px">${s.realizado?'Ya lo registraste. Puedes corregirlo si hace falta.':'Al terminar, apunta lo que hiciste de verdad. Tu entrenador verá la comparación con lo planificado.'}</p></div>
     <div class="trace-pick"><label class="field"><span>Archivo del reloj (opcional)</span><input type="file" id="re-file" accept=".gpx,.tcx,application/gpx+xml,application/vnd.garmin.tcx+xml,application/xml,text/xml"></label>
@@ -883,7 +886,7 @@ function realForm(s,d){const ts=tareasOf(s);const r=s.realizado||{};const rt=r.t
       return `<div class="real-task"><div class="real-plan"><span class="o">${esc(t.orden)}</span><div style="min-width:0"><strong>${+t.series>1?esc(t.series)+' × ':''}${t.tipo==='compuesta'?'Compuesta: ':esc(TASKS[t.tipo])+' '}${esc(fmtTarea(t))}</strong>
         <div class="muted mono" style="font-size:12.5px">${[t.esfuerzo?nf.format(t.esfuerzo)+' %'+(t.objetivo?' · '+esc(t.objetivo):''):'',plan!=null?'previsto '+planTxt+' min':''].filter(Boolean).join(' · ')}</div></div></div>
         <div class="grid2">${field('Estado',`<select id="${pre}-estado" name="${pre}-estado">${opt('completada','Completada',(x.estado||'completada')==='completada')}${opt('parcial','Parcial',x.estado==='parcial')}${opt('no','No realizada',x.estado==='no')}</select>`)}
-          ${field('Minutos reales',`<input id="${pre}-dur" name="${pre}-dur" class="re-dur" data-plan="${plan??''}" type="number" min="0" step="any" inputmode="decimal" placeholder="${planTxt}" value="${esc(x.duracion??'')}">`,plan!=null?'Vacío y completada = lo previsto':'')}
+          ${field('Minutos reales',`<input id="${pre}-dur" name="${pre}-dur" class="re-dur" data-plan="${plan??''}" type="number" min="0" step="any" inputmode="decimal" placeholder="${planTxt}" value="${esc(durVal(x))}">`,r.traza?'Vacío = lo que marca el archivo del reloj':plan!=null?'Vacío y completada = lo previsto':'')}
           ${extra(pre,x)}</div>
         ${field('Comentario',`<input id="${pre}-com" name="${pre}-com" value="${esc(x.comentario||'')}" placeholder="Cómo fue, por qué paraste…">`)}</div>`}).join('')
     :`<div class="grid2">${field('Minutos reales',`<input id="re-ses-dur" name="re-ses-dur" type="number" min="0" step="any" inputmode="decimal" placeholder="${esc(s.duracion||'')}" value="${esc(r.duracion??'')}">`,s.duracion?'Previsto: '+fmtMin(s.duracion):'')}${extra('re-ses',r)}</div>`}
@@ -995,6 +998,15 @@ function parseTrace(txt,name){
   if(!(out.d[out.d.length-1]>0))delete out.d;
   return out;
 }
+/* Con el archivo del reloj, las tareas sin minutos reales se reparten el tiempo del archivo que no han anotado
+   las demás, en proporción a lo previsto. Una tarea completada que queda por debajo del 95 % pasa a parcial. */
+const traceMin=tr=>tr.t[tr.t.length-1]/60;
+const estadoPor=(dur,plan)=>dur===0?'no':plan&&dur>=plan*0.95?'completada':'parcial';
+function repartoReloj(items,min){
+  const vacias=items.filter(i=>i.dur==null&&i.estado!=='no');if(!vacias.length)return false;
+  const resto=Math.max(0,min-items.reduce((a,i)=>a+(i.estado!=='no'&&i.dur!=null?i.dur:0),0));
+  const pt=vacias.reduce((a,i)=>a+(i.plan||0),0);
+  vacias.forEach(i=>{i.dur=Math.round((pt>0?resto*(i.plan||0)/pt:resto/vacias.length)*10)/10;i.auto=true});return true}
 function traceInfo(tr){const D=tr.d?tr.d[tr.d.length-1]:0;return [tr.n,fmtTime(tr.t[tr.t.length-1]),D?fmtDist(D):'',tr.fc?'con FC':'',tr.pot?'con potencia':'',tr.alt?'con altitud':''].filter(Boolean).join(' · ')}
 
 function analisis(s,d){
@@ -1056,7 +1068,7 @@ function anChart(A,W){
     else A.real.forEach(p=>{const v=p[o.key];if(!(v>0))return;const a=X(x(p.t0)),b=X(x(p.t1)),yy=X(o.y(v));
       g+=`<rect class="a-${o.cls}" x="${a}" y="${yy}" width="${X(Math.max(.5,b-a))}" height="${X(Math.max(0,base-yy))}"/><path class="ln l-${o.cls}" d="M${a},${yy} L${b},${yy}"/>`});
     if(o.key==='sp'||o.key==='pot'){let d='';A.real.forEach(p=>{const v=p.tgt&&p.tgt[o.key];if(v>0){const yy=X(o.y(v));d+=`M${X(x(p.t0))},${yy} L${X(x(p.t1))},${yy} `}});if(d)g+=`<path class="plan" d="${d}"/>`}});
-  const st=tickStep(A.T);for(let t=0;t<=A.T+1;t+=st)g+=`<line class="gl" x1="${X(x(t))}" x2="${X(x(t))}" y1="${bottom}" y2="${bottom+4}"/><text x="${X(x(t))}" y="${bottom+15}" text-anchor="${t===0?'start':'middle'}">${hm(t)}</text>`;
+  const st=tickStep(A.T);for(let t=0;t<=A.T+1;t+=st)g+=`<line class="gl" x1="${X(x(t))}" x2="${X(x(t))}" y1="${bottom}" y2="${bottom+4}"/><text x="${X(x(t))}" y="${bottom+15}" text-anchor="${t===0?'start':x(t)>W-Rm-16?'end':'middle'}">${hm(t)}</text>`;
   g+=`<line class="cur" id="an-cur" x1="0" x2="0" y1="6" y2="${bottom}" visibility="hidden"/>`;
   AN={sid:A.s.id,A,W,L,iw,panels};
   return `<svg class="an-chart" id="an-chart" viewBox="0 0 ${W} ${H}" width="${W}" height="${H}" role="img" aria-label="Ritmo, frecuencia cardiaca y altitud de la sesión">${g}</svg>`}
@@ -1066,7 +1078,7 @@ function anPlan(pieces,P,W){
   [50,100].forEach(v=>{g+=`<line class="gl" x1="${L}" x2="${W-Rm}" y1="${X(y(v))}" y2="${X(y(v))}"/><text x="${L-5}" y="${X(y(v)+3.5)}" text-anchor="end">${v} %</text>`});
   pieces.forEach(p=>{if(!(p.plan>0))return;const v=p.pct||(p.kind==='rest'?32:55);const cls=p.pct?'zf'+pctClass(p.pct):p.kind==='rest'?'zf1':'nopct';
     g+=`<rect class="bar ${cls}" x="${X(x(p.p0)+.4)}" y="${X(y(v))}" width="${X(Math.max(.6,x(p.p1)-x(p.p0)-.8))}" height="${X(top+h-y(v))}"><title>${esc(p.lbl)}: ${p.kind==='rest'?'descanso':p.pct?nf.format(p.pct)+' %'+(p.obj?' · '+p.obj:''):'sin % de esfuerzo'} · ${fmtTime(p.plan)}</title></rect>`});
-  const st=tickStep(P);for(let t=0;t<=P+1;t+=st)g+=`<text x="${X(x(t))}" y="${H-5}" text-anchor="${t===0?'start':'middle'}">${hm(t)}</text>`;
+  const st=tickStep(P);for(let t=0;t<=P+1;t+=st)g+=`<text x="${X(x(t))}" y="${H-5}" text-anchor="${t===0?'start':x(t)>W-Rm-16?'end':'middle'}">${hm(t)}</text>`;
   return `<svg class="an-chart" style="cursor:default" viewBox="0 0 ${W} ${H}" width="${W}" height="${H}" role="img" aria-label="Estructura prevista de la sesión">${g}</svg>`}
 function lapBox(g,i,A){
   const met=A.metric==='pot'&&g.pot>0?n0.format(g.pot)+' W':g.sp>0?(A.bike?nf.format(g.sp*3.6)+' km/h':fmtTime(1000/g.sp)+'/km'):g.kind==='rest'?'—':'sin ritmo';
@@ -1180,17 +1192,21 @@ const SUBMIT={
       if(rv){if(bike){const n=num(rv);if(n==null||n<=0)throw label+'la velocidad media (en km/h).';ritmo=String(n).replace('.',',')}else{if(parseTime(rv)==null)throw label+'el ritmo como mm:ss, por ejemplo 5:10.';ritmo=rv}}
       return {ritmo,potencia:bike?num(g(p,'pot')):null,fc:num(g(p,'fc')),distancia:num(g(p,'dist'))}};
     const R2={rpe:+fd.get('re-rpe')||null,comentario:String(fd.get('re-com')||'').trim(),guardado:new Date().toISOString(),tareas:{}};
+    const tr=pendTrace.sid===s.id&&pendTrace.v!==undefined?pendTrace.v:(s.realizado&&s.realizado.traza)||null;
     try{
       if(ts.length){let total=0,any=false;
-        for(const t of ts){const p='re-'+t.id;const estado=g(p,'estado')||'completada';let dur=num(g(p,'dur'));const plan=totalTarea(t);
-          if(dur==null){if(estado==='completada')dur=plan!=null?Math.round(plan*10)/10:null;else if(estado==='no')dur=0;else throw `Tarea ${t.orden}: indica cuántos minutos hiciste.`}
+        const items=ts.map(t=>({t,plan:totalTarea(t),estado:g('re-'+t.id,'estado')||'completada',dur:num(g('re-'+t.id,'dur'))}));
+        if(tr)repartoReloj(items,traceMin(tr));
+        for(const i of items){const t=i.t,p='re-'+t.id;let {estado,dur,plan}=i,auto=!!i.auto;
+          if(auto&&estado==='completada')estado=estadoPor(dur,plan);
+          if(dur==null){if(estado==='completada'){dur=plan!=null?Math.round(plan*10)/10:null;auto=true}else if(estado==='no')dur=0;else throw `Tarea ${t.orden}: indica cuántos minutos hiciste.`}
           if(estado==='no')dur=0;
           if(dur!=null){total+=dur;any=true}
-          R2.tareas[t.id]=Object.assign({estado,duracion:dur,comentario:String(g(p,'com')||'').trim()},extras(p,`Tarea ${t.orden}: revisa `))}
+          R2.tareas[t.id]=Object.assign({estado,duracion:dur,auto,comentario:String(g(p,'com')||'').trim()},extras(p,`Tarea ${t.orden}: revisa `))}
         R2.duracion=any?Math.round(total*10)/10:null;
-      }else{const dur=num(fd.get('re-ses-dur'));if(dur==null)throw 'Indica cuántos minutos entrenaste.';Object.assign(R2,{duracion:dur},extras('re-ses','Revisa '))}
+      }else{let dur=num(fd.get('re-ses-dur'));if(dur==null&&tr)dur=Math.round(traceMin(tr)*10)/10;if(dur==null)throw 'Indica cuántos minutos entrenaste.';Object.assign(R2,{duracion:dur},extras('re-ses','Revisa '))}
     }catch(msg){if(typeof msg==='string')return formErr(f,msg);throw msg}
-    const tr=pendTrace.sid===s.id&&pendTrace.v!==undefined?pendTrace.v:(s.realizado&&s.realizado.traza)||null;if(tr)R2.traza=tr;
+    if(tr)R2.traza=tr;
     await W('update',pSes(s.aid,s.id),{realizado:R2});pendTrace={sid:null,v:undefined};
     const pc=cumpl(Object.assign({},s,{realizado:R2}));toast(pc!=null?'Entrenamiento registrado: '+pc+' % de lo previsto':'Entrenamiento registrado');
     const btn=f.querySelector('[type=submit]');if(btn)btn.textContent='Guardar cambios'},
@@ -1371,6 +1387,8 @@ async function pickTrace(file){const info=$('#re-file-info'),sid=sheet&&sheet.ar
     const bike=curDep().deporte==='ciclismo';
     const fill={'re-ses-dur':Math.round(T/6)/10,'re-ses-dist':D||'','re-ses-ritmo':D?(bike?String(Math.round(D/T*36)/10).replace('.',','):fmtTime(T/(D/1000))):'','re-ses-fc':avg('fc'),'re-ses-pot':avg('pot')};
     for(const id in fill){const el=document.getElementById(id);if(el&&!el.value&&fill[id]!=='')el.value=fill[id]}
+    const items=tareasOf(ses(sid)||{}).map(t=>{const el=document.getElementById('re-'+t.id+'-dur'),sel=document.getElementById('re-'+t.id+'-estado');return el&&sel?{el,sel,plan:num(el.dataset.plan),dur:num(el.value),estado:sel.value}:null}).filter(Boolean);
+    if(repartoReloj(items,T/60))items.forEach(i=>{if(i.auto){i.el.value=i.dur;i.sel.value=estadoPor(i.dur,i.plan)}});
   }catch(err){pendTrace={sid:null,v:undefined};info.innerHTML=`<span class="hint-warn">${esc(typeof err==='string'?err:'No se ha podido leer el archivo. Exporta la actividad como GPX o TCX.')}</span>`}}
 document.addEventListener('keydown',e=>{if(e.key==='Escape'&&sheet)return closeSheet();
   const r=e.target.closest&&e.target.closest('[role=button][data-action]');if(r&&r===e.target&&(e.key==='Enter'||e.key===' ')){e.preventDefault();r.click()}});
