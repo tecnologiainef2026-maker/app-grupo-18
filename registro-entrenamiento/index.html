@@ -1,0 +1,1156 @@
+<title>Registro de Entrenamiento</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700&family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&display=swap">
+<style>
+/* Layout: cabecera fija con una pestaña por entidad del diagrama E-R; contenido en una columna ancha; las fichas (sesión, deportista, formularios) se abren en un panel lateral. */
+:root{
+  --bg:#eef1f5; --surface:#ffffff; --surface-2:#f5f7fa; --ink:#132030; --muted:#5a6879; --line:#d6dde6;
+  --accent:#1c56c9; --accent-ink:#ffffff; --accent-soft:#e3ebfb;
+  --bike:#c4731a; --canoe:#0d8580; --run:#cf4436;
+  --ok:#1f8a4c; --warn:#b7791f; --bad:#c23b32; --scrim:rgba(14,22,33,.42);
+  --z1:#7fa7c9; --z2:#3f8f6b; --z3:#c9a227; --z4:#d9762b; --z5:#c23b32;
+  --f-display:"Barlow Condensed","Arial Narrow",Arial,sans-serif;
+  --f-body:"IBM Plex Sans",system-ui,-apple-system,"Segoe UI",sans-serif;
+  --f-mono:"IBM Plex Mono",ui-monospace,SFMono-Regular,Menlo,monospace;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --bg:#0e141c; --surface:#161f2a; --surface-2:#1b2633; --ink:#e4eaf2; --muted:#94a2b3; --line:#2a3646;
+  --accent:#6f9dff; --accent-ink:#0b1320; --accent-soft:#1d2c46;
+  --bike:#e8a34e; --canoe:#3cc4bc; --run:#f27b6c;
+  --ok:#4cc27e; --warn:#e2ad4c; --bad:#f07267; --scrim:rgba(0,0,0,.6);
+  --z1:#8db6da; --z2:#58b88c; --z3:#e2bf45; --z4:#ef9350; --z5:#f07267; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#0e141c; --surface:#161f2a; --surface-2:#1b2633; --ink:#e4eaf2; --muted:#94a2b3; --line:#2a3646;
+  --accent:#6f9dff; --accent-ink:#0b1320; --accent-soft:#1d2c46;
+  --bike:#e8a34e; --canoe:#3cc4bc; --run:#f27b6c;
+  --ok:#4cc27e; --warn:#e2ad4c; --bad:#f07267; --scrim:rgba(0,0,0,.6);
+  --z1:#8db6da; --z2:#58b88c; --z3:#e2bf45; --z4:#ef9350; --z5:#f07267; color-scheme:dark}
+
+*{box-sizing:border-box}
+body{background:var(--bg);color:var(--ink);font:15px/1.5 var(--f-body)}
+body::before{content:"";position:fixed;inset:0 0 auto;height:env(safe-area-inset-top,0px);z-index:10;background:var(--surface)}
+.wrap{max-width:1120px;margin:0 auto;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+.mono,.num{font-family:var(--f-mono);font-variant-numeric:tabular-nums}
+.muted{color:var(--muted)}
+h1,h2,h3{font-family:var(--f-display);font-weight:700;letter-spacing:.01em;text-wrap:balance;margin:0}
+h2{font-size:28px;line-height:1.1;text-transform:uppercase}
+h3{font-size:19px;line-height:1.2;text-transform:uppercase;letter-spacing:.03em}
+.eyebrow{font:500 12px/1.3 var(--f-mono);letter-spacing:.06em;text-transform:uppercase;color:var(--muted)}
+a{color:var(--accent)}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+p{margin:0}
+
+header.top{position:sticky;top:env(safe-area-inset-top,0px);z-index:5;background:var(--surface);border-bottom:1px solid var(--line)}
+.top-inner{display:flex;align-items:center;flex-wrap:wrap;column-gap:16px;row-gap:6px;padding-top:12px}
+.brand{display:flex;align-items:center;gap:12px;min-width:0}
+.brand h1{font-size:25px;line-height:1;text-transform:uppercase}
+.stripes{display:flex;gap:3px}
+.stripes i{width:6px;height:22px;border-radius:1px;transform:skewX(-14deg)}
+.status{margin-left:auto;display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.role{font:600 12px var(--f-mono);letter-spacing:.06em;text-transform:uppercase;padding:3px 9px;border-radius:99px;background:var(--accent-soft);color:var(--accent)}
+.role:empty{display:none}
+.mode{display:flex;align-items:center;gap:7px;font:500 12px var(--f-mono);color:var(--muted)}
+.mode i{width:8px;height:8px;border-radius:50%;background:var(--muted)}
+.mode.shared i{background:var(--ok)} .mode.local i{background:var(--warn)}
+nav.tabs{display:flex;gap:2px;width:100%;overflow-x:auto;scrollbar-width:none}
+nav.tabs::-webkit-scrollbar{display:none}
+nav.tabs a{font:600 16px var(--f-display);letter-spacing:.07em;text-transform:uppercase;color:var(--muted);text-decoration:none;padding:9px 12px 8px;border-bottom:3px solid transparent;white-space:nowrap}
+nav.tabs a:hover{color:var(--ink)}
+nav.tabs a[aria-current="page"]{color:var(--ink);border-color:var(--accent)}
+
+main{padding-block:24px 72px}
+.view-head{display:flex;align-items:flex-end;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:18px}
+.view-head p{margin-top:4px;color:var(--muted);max-width:62ch}
+
+.card{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:18px}
+.btn{font:600 14px var(--f-body);border:1px solid var(--line);background:var(--surface);color:var(--ink);border-radius:7px;padding:8px 14px;cursor:pointer;display:inline-flex;align-items:center;gap:6px;white-space:nowrap}
+.btn:hover{border-color:var(--muted)}
+.btn.primary{background:var(--accent);border-color:var(--accent);color:var(--accent-ink)}
+.btn.primary:hover{filter:brightness(1.07)}
+.btn.small{padding:5px 10px;font-size:13px}
+.btn.ghost{background:transparent;border-color:transparent;color:var(--muted)}
+.btn.ghost:hover{color:var(--ink);border-color:var(--line)}
+.btn.danger{color:var(--bad)}
+.btn.armed{background:var(--bad);border-color:var(--bad);color:#fff}
+.btn:disabled{opacity:.5;cursor:not-allowed}
+.toolbar{display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end;margin-bottom:16px}
+.toolbar .field{min-width:170px}
+.chip{display:inline-flex;align-items:center;gap:6px;font:500 12px var(--f-mono);letter-spacing:.02em;padding:2px 8px 2px 7px;border-radius:99px;background:color-mix(in srgb,var(--sp,var(--muted)) 15%,transparent);color:var(--sp,var(--muted));white-space:nowrap}
+.chip::before{content:"";width:7px;height:7px;border-radius:50%;background:var(--sp,var(--muted))}
+.sp-ciclismo{--sp:var(--bike)} .sp-piraguismo{--sp:var(--canoe)} .sp-carrera{--sp:var(--run)}
+.badge{font:500 12px var(--f-mono);padding:2px 7px;border-radius:5px;background:var(--surface-2);border:1px solid var(--line);white-space:nowrap}
+.badge.warn{color:var(--warn);border-color:color-mix(in srgb,var(--warn) 45%,var(--line))}
+.rpe{font:600 12px var(--f-mono);padding:2px 7px;border-radius:5px;color:#fff;white-space:nowrap}
+.zb{font:600 12px var(--f-mono);padding:2px 7px;border-radius:5px;color:#fff;white-space:nowrap}
+.zc1{background:var(--z1)} .zc2{background:var(--z2)} .zc3{background:var(--z3)} .zc4{background:var(--z4)} .zc5{background:var(--z5)}
+
+form{display:grid;gap:14px}
+.field{display:grid;gap:5px;min-width:0}
+.field>span{font:500 12px var(--f-mono);letter-spacing:.05em;text-transform:uppercase;color:var(--muted)}
+.field small{color:var(--muted);font-size:12.5px}
+input,select,textarea{font:15px var(--f-body);color:var(--ink);background:var(--surface-2);border:1px solid var(--line);border-radius:7px;padding:8px 10px;width:100%;min-width:0}
+input:focus,select:focus,textarea:focus{border-color:var(--accent);outline:none;box-shadow:0 0 0 3px var(--accent-soft)}
+input[readonly],input:disabled{color:var(--muted)}
+textarea{resize:vertical;min-height:70px}
+input[type=range]{padding:0;accent-color:var(--accent);background:transparent;border:0;box-shadow:none}
+input[type=checkbox]{width:auto;accent-color:var(--accent)}
+.check{display:flex;gap:8px;align-items:center;font-size:14px;cursor:pointer}
+.grid2{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:12px}
+.form-actions{display:flex;gap:8px;flex-wrap:wrap;justify-content:flex-end;padding-top:4px}
+.form-err{color:var(--bad);font-size:14px}
+.form-err:empty{display:none}
+.hint-warn{color:var(--warn)!important}
+.photo-pick{display:flex;align-items:center;gap:14px}
+
+.day{margin-bottom:18px}
+.day>.eyebrow{margin:0 0 6px 2px}
+.rows{display:grid;background:var(--surface);border:1px solid var(--line);border-radius:10px;overflow:hidden}
+.row{display:grid;grid-template-columns:auto minmax(0,1fr) auto;align-items:center;gap:12px;padding:12px 14px;border:0;border-top:1px solid var(--line);background:transparent;color:inherit;font:inherit;text-align:left;cursor:pointer;width:100%}
+.rows>.row:first-child{border-top:0}
+.row:hover{background:var(--surface-2)}
+.row .bar{width:4px;align-self:stretch;border-radius:2px;background:var(--sp,var(--muted))}
+.row .main{min-width:0}
+.row .main strong{display:block;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.row .main span{display:block;color:var(--muted);font-size:13.5px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.row .meta{display:flex;gap:6px;flex-wrap:wrap;justify-content:flex-end;align-items:center}
+@media (max-width:560px){.row{grid-template-columns:auto minmax(0,1fr)}.row .meta{grid-column:2;justify-content:flex-start}}
+
+.panel-grid{display:grid;grid-template-columns:minmax(0,1.7fr) minmax(0,1fr);gap:18px;align-items:start}
+@media (max-width:860px){.panel-grid{grid-template-columns:minmax(0,1fr)}}
+.stack{display:grid;gap:18px;align-content:start;min-width:0}
+.card-head{display:flex;justify-content:space-between;align-items:baseline;gap:10px;flex-wrap:wrap;margin-bottom:12px}
+.week-sum{font:500 13px var(--f-mono);color:var(--muted)}
+.week-sum b{color:var(--ink);font-weight:500}
+.chart{width:100%;height:auto;display:block}
+.chart .grid{stroke:var(--line);stroke-width:1}
+.chart text{fill:var(--muted);font:11px var(--f-mono)}
+.chart .tot{fill:var(--ink)}
+.f-bike{fill:var(--bike)} .f-canoe{fill:var(--canoe)} .f-run{fill:var(--run)}
+.legend{display:flex;gap:12px;flex-wrap:wrap;margin-top:8px}
+.steps{margin-bottom:18px}
+.step{display:grid;grid-template-columns:28px minmax(0,1fr) auto;gap:12px;align-items:center;padding:12px 0;border-top:1px solid var(--line)}
+.step:first-of-type{border-top:0}
+.step .n{width:28px;height:28px;border-radius:50%;display:grid;place-items:center;font:600 13px var(--f-mono);border:1.5px solid var(--line);color:var(--muted)}
+.step.done .n{background:var(--ok);border-color:var(--ok);color:#fff}
+.step.done .t{color:var(--muted);text-decoration:line-through}
+.step .d{color:var(--muted);font-size:13.5px}
+@media (max-width:560px){.step{grid-template-columns:28px minmax(0,1fr)}.step .btn{grid-column:2;justify-self:start}}
+.empty{border:1.5px dashed var(--line);border-radius:10px;padding:28px 20px;text-align:center;color:var(--muted)}
+.empty strong{display:block;color:var(--ink);font:700 20px var(--f-display);text-transform:uppercase;letter-spacing:.03em;margin-bottom:4px}
+.empty .btn{margin-top:12px}
+.notice{display:flex;gap:12px;align-items:center;justify-content:space-between;flex-wrap:wrap;background:var(--accent-soft);border:1px solid color-mix(in srgb,var(--accent) 35%,var(--line));border-radius:10px;padding:12px 16px;margin-bottom:18px}
+
+.athletes{display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:14px}
+.ath{display:grid;grid-template-columns:auto minmax(0,1fr);gap:12px 14px;text-align:left;font:inherit;color:inherit;cursor:pointer;background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:16px;border-top:4px solid var(--sp,var(--line))}
+.ath:hover{border-color:var(--muted);border-top-color:var(--sp,var(--muted))}
+.ath h3{font-size:20px;text-transform:none;letter-spacing:0;overflow:hidden;text-overflow:ellipsis}
+.ath dl{grid-column:1/-1;display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;margin:0}
+.ath dt{font:500 10.5px var(--f-mono);letter-spacing:.06em;text-transform:uppercase;color:var(--muted)}
+.ath dd{margin:0;font:500 14px var(--f-mono);font-variant-numeric:tabular-nums;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.avatar{width:52px;height:52px;border-radius:50%;object-fit:cover;display:grid;place-items:center;font:700 19px var(--f-display);background:color-mix(in srgb,var(--sp,var(--muted)) 18%,var(--surface));color:var(--sp,var(--muted));flex:none}
+.avatar.lg{width:76px;height:76px;font-size:28px}
+.loads{display:grid;grid-template-columns:repeat(auto-fill,minmax(290px,1fr));gap:14px}
+.load{display:grid;gap:8px;cursor:pointer;border-top:4px solid var(--sp,var(--line));padding:14px 14px 12px;min-width:0}
+.load:hover{border-color:var(--muted);border-top-color:var(--sp,var(--muted))}
+.load-head{display:flex;gap:10px;align-items:center}
+.load-head strong{display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.avatar.sm{width:36px;height:36px;font-size:14px}
+.chart.mini text{font-size:10px}
+.part-grid,.part-head{display:grid;grid-template-columns:minmax(0,1.25fr) minmax(0,1fr) minmax(0,.85fr) minmax(0,.7fr) minmax(0,.7fr) 34px;gap:6px;align-items:center}
+.p-vals{display:contents}
+.part-head span{font:500 11px var(--f-mono);letter-spacing:.05em;text-transform:uppercase;color:var(--muted)}
+.part-grid input,.part-grid select{padding:7px 8px;font-size:14px}
+.p-u-none{font:500 13px var(--f-mono);color:var(--muted);padding-left:6px}
+.p-hint{display:block;font-size:12.5px;color:var(--muted);margin-top:3px;font-family:var(--f-mono)}
+.part{border-left:3px solid var(--accent-soft);padding-left:8px}
+@media (max-width:520px){.part-head{display:none}.part-grid{grid-template-columns:repeat(3,minmax(0,1fr))}.part-grid .btn{justify-self:end}}
+ol.parts{margin:6px 0 2px;padding-left:20px;display:grid;gap:4px;font-size:14px}
+ol.parts li{padding-left:2px}
+ol.parts li>*{margin-right:8px}
+ol.parts .pw{font-weight:500}
+ol.parts span:not(.pw):not(.zb){color:var(--muted);font:13px var(--f-mono)}
+.notice.preview{background:var(--surface);border-color:var(--accent);border-width:1.5px}
+.cb-ok{background:var(--ok)} .cb-warn{background:var(--warn)} .cb-bad{background:var(--bad)}
+.real{display:flex;gap:6px 10px;flex-wrap:wrap;align-items:center;font:13px var(--f-mono);margin-top:6px;padding:6px 8px;border-radius:6px;background:var(--surface-2)}
+.real .rc{font-family:var(--f-body);font-style:italic;color:var(--muted)}
+.real-com{font-style:italic;color:var(--muted);max-width:62ch}
+.kv .kv-real{background:var(--accent-soft)}
+.real-form{border-color:color-mix(in srgb,var(--accent) 45%,var(--line))}
+.real-task{display:grid;gap:10px;padding-top:14px;border-top:1px solid var(--line)}
+.real-plan{display:grid;grid-template-columns:30px minmax(0,1fr);gap:10px;align-items:start}
+.real-plan .o{font:600 13px var(--f-mono);width:28px;height:28px;border-radius:6px;display:grid;place-items:center;background:var(--accent-soft);color:var(--accent)}
+.link-list{display:grid;gap:10px;margin-bottom:22px}
+.link-item{display:flex;gap:12px;align-items:center;justify-content:space-between;flex-wrap:wrap;background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:12px 14px}
+.code{font:600 18px var(--f-mono);letter-spacing:.18em;user-select:all;background:var(--surface-2);border:1px dashed var(--line);border-radius:7px;padding:4px 10px}
+
+.tests{display:grid;grid-template-columns:repeat(auto-fill,minmax(190px,1fr));gap:12px;margin-bottom:22px}
+.test{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:14px;display:grid;gap:4px;align-content:start}
+.test.ref{border-color:color-mix(in srgb,var(--accent) 50%,var(--line))}
+.test .val{font:500 26px/1.1 var(--f-mono);font-variant-numeric:tabular-nums}
+.test .val small{font-size:13px;color:var(--muted);margin-left:4px}
+.delta.up{color:var(--ok)} .delta.down{color:var(--bad)}
+.spark{width:100%;height:34px;display:block;margin-top:4px}
+.spark polyline{fill:none;stroke:var(--accent);stroke-width:1.6}
+.spark circle{fill:var(--accent)}
+.table-wrap{overflow-x:auto;background:var(--surface);border:1px solid var(--line);border-radius:10px}
+table{border-collapse:collapse;width:100%;min-width:560px}
+th,td{text-align:left;padding:10px 14px;border-top:1px solid var(--line);vertical-align:middle}
+thead th{border-top:0;font:500 11.5px var(--f-mono);letter-spacing:.06em;text-transform:uppercase;color:var(--muted);background:var(--surface-2)}
+td.num,th.num{text-align:right}
+.copy{font-family:var(--f-mono);font-size:13.5px;user-select:all}
+
+.zt{display:grid;border:1px solid var(--line);border-radius:10px;overflow:hidden}
+.zr{display:grid;grid-template-columns:auto minmax(0,1fr) auto;gap:12px;align-items:center;padding:9px 12px;border-top:1px solid var(--line);background:var(--surface)}
+.zr:first-child{border-top:0}
+.zr .zn{font-size:14px}
+.zr .zn small{display:block;color:var(--muted);font:12px var(--f-mono)}
+.zr .zv{font:500 14px var(--f-mono);font-variant-numeric:tabular-nums;text-align:right}
+
+.sheet{position:fixed;inset:0;z-index:20;display:flex;justify-content:flex-end}
+.sheet-backdrop{position:absolute;inset:0;background:var(--scrim)}
+.sheet-panel{position:relative;width:min(580px,100%);height:100%;overflow-y:auto;background:var(--surface);border-left:1px solid var(--line);
+  padding-top:calc(18px + env(safe-area-inset-top,0px));padding-bottom:calc(40px + env(safe-area-inset-bottom,0px));
+  padding-left:22px;padding-right:max(22px,env(safe-area-inset-right,0px));display:grid;gap:20px;align-content:start}
+@media (max-width:600px){.sheet-panel{padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}}
+.sheet-close{position:sticky;top:0;justify-self:end;margin-bottom:-14px;z-index:1}
+.sec{display:grid;gap:10px;min-width:0}
+.sec+.sec{border-top:1px solid var(--line);padding-top:18px}
+.kv{display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:10px;margin:0}
+.kv div{background:var(--surface-2);border-radius:8px;padding:9px 11px}
+.kv dt{font:500 10.5px var(--f-mono);letter-spacing:.06em;text-transform:uppercase;color:var(--muted)}
+.kv dd{margin:2px 0 0;font:500 15px var(--f-mono);font-variant-numeric:tabular-nums}
+.task{display:grid;grid-template-columns:30px minmax(0,1fr) auto;gap:10px;align-items:start;padding:11px 0;border-top:1px solid var(--line)}
+.task:first-child{border-top:0}
+.task .o{font:600 13px var(--f-mono);width:28px;height:28px;border-radius:6px;display:grid;place-items:center;background:var(--accent-soft);color:var(--accent)}
+.task .what{font-weight:600}
+.task .how{color:var(--muted);font-size:13.5px;font-family:var(--f-mono);display:flex;gap:6px 10px;flex-wrap:wrap;align-items:center;margin-top:2px}
+.task .acts{display:flex;gap:4px}
+.tot-line{display:flex;justify-content:space-between;gap:10px;font:500 13.5px var(--f-mono);padding-top:10px;border-top:1px dashed var(--line)}
+.subform{background:var(--surface-2);border:1px solid var(--line);border-radius:10px;padding:16px}
+.subform input,.subform select{background:var(--surface)}
+.head-row{display:flex;gap:14px;align-items:center}
+.head-row>div{min-width:0}
+.actions-row{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+
+.toast{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(18px + env(safe-area-inset-bottom,0px));z-index:40;background:var(--ink);color:var(--bg);padding:10px 16px;border-radius:8px;font-size:14px;max-width:calc(100% - 32px);box-shadow:0 6px 20px rgba(0,0,0,.2)}
+.toast.bad{background:var(--bad);color:#fff}
+.loading{padding:60px 0;text-align:center;color:var(--muted);font-family:var(--f-mono)}
+.welcome{max-width:640px;margin:24px auto;display:grid;gap:18px}
+@media (prefers-reduced-motion:no-preference){.sheet-panel{animation:slide .18s ease-out}@keyframes slide{from{transform:translateX(24px);opacity:.6}}}
+</style>
+
+<header class="top">
+  <div class="wrap top-inner">
+    <div class="brand">
+      <span class="stripes" aria-hidden="true"><i style="background:var(--bike)"></i><i style="background:var(--canoe)"></i><i style="background:var(--run)"></i></span>
+      <h1>Registro de Entrenamiento</h1>
+    </div>
+    <div class="status"><span class="role" id="role"></span><div class="mode" id="mode"><i></i><span>Conectando…</span></div></div>
+    <nav class="tabs" aria-label="Secciones" id="tabs"></nav>
+  </div>
+</header>
+
+<main class="wrap" id="main"><div class="loading">Cargando registro…</div></main>
+
+<div class="sheet" id="sheet" hidden>
+  <div class="sheet-backdrop" data-action="close-sheet"></div>
+  <div class="sheet-panel" role="dialog" aria-modal="true" id="sheet-panel">
+    <button class="btn small sheet-close" data-action="close-sheet" aria-label="Cerrar">Cerrar ✕</button>
+    <div id="sheet-body" style="display:grid;gap:20px;min-width:0"></div>
+  </div>
+</div>
+<div class="toast" id="toast" hidden></div>
+
+<script>
+(function(){
+'use strict';
+/* ================= Configuración ================= */
+const SPORTS={ciclismo:{n:'Ciclismo',f:'f-bike'},piraguismo:{n:'Piragüismo',f:'f-canoe'},carrera:{n:'Carrera de fondo',f:'f-run'}};
+const TESTS={
+  ftp:{n:'FTP',u:'W',kind:'num',better:'high',hint:'Potencia umbral funcional en vatios'},
+  vo2:{n:'VO₂ máx',u:'ml/kg/min',kind:'num',better:'high'},
+  cr30:{n:'Contrarreloj 30 min',u:'m',kind:'num',better:'high',hint:'Distancia recorrida en 30 min, en metros'},
+  cr2000:{n:'Contrarreloj 2000 m',u:'',kind:'time',better:'low',hint:'Tiempo, p. ej. 7:45.3'},
+  sp200:{n:'Sprint 200 m',u:'',kind:'time',better:'low',hint:'Tiempo, p. ej. 38.2'}
+};
+/* Test de referencia que se propone por defecto para el % de esfuerzo de cada tarea (el primero que tenga el deportista). */
+const REF_PREF={ciclismo:['ftp','cr30','sp200','vo2','cr2000'],carrera:['cr30','cr2000','sp200','vo2','ftp'],piraguismo:['cr2000','cr30','sp200','vo2','ftp']};
+const TASKS={distancia:'Distancia',potencia:'Potencia',tiempo:'Tiempo',ritmo:'Ritmo',frecuencia:'Frecuencia',compuesta:'Compuesta'};
+const RPE=['','Muy, muy suave','Muy suave','Suave','Moderado','Algo duro','Duro','Muy duro','Muy, muy duro','Casi máximo','Máximo'];
+const VIEWS=['panel','sesiones','deportistas','tests','entrenadores'];
+
+/* ================= Estado ================= */
+const S={entrenadores:[],deportistas:[],solicitudes:[],sesiones:[]};
+const ALL={deportistas:[],solicitudes:[],sesiones:[]};
+let realCoach=true, viewAs=null, sharedMode=false;
+let store=null, isCoach=true, myId=null, myDoc, view='panel', sheet=null;
+let fDep='', fSport='', testDep='', calcPct=85;
+let ready={entrenadores:false,atletas:false};
+const sesByAid=new Map(), sesSubs=new Map(), sesLoaded=new Set();
+
+/* ================= Utilidades ================= */
+const $=s=>document.querySelector(s);
+const esc=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const uid=()=>Date.now().toString(36)+Math.random().toString(36).slice(2,8);
+const nf=new Intl.NumberFormat('es-ES',{maximumFractionDigits:1});
+const n0=new Intl.NumberFormat('es-ES',{maximumFractionDigits:0});
+const pad=n=>String(n).padStart(2,'0');
+function todayISO(){const d=new Date();return d.getFullYear()+'-'+pad(d.getMonth()+1)+'-'+pad(d.getDate())}
+function nowHM(){const d=new Date();return pad(d.getHours())+':'+pad(d.getMinutes())}
+function toDate(iso){const [y,m,d]=(iso||'').split('-').map(Number);return new Date(y,(m||1)-1,d||1)}
+function fmtDate(iso,opt){if(!iso)return '—';return toDate(iso).toLocaleDateString('es-ES',opt||{day:'numeric',month:'short',year:'numeric'})}
+function fmtDay(iso){if(!iso)return 'Sin fecha';const s=toDate(iso).toLocaleDateString('es-ES',{weekday:'long',day:'numeric',month:'long',year:'numeric'});return s.charAt(0).toUpperCase()+s.slice(1)}
+function age(iso){if(!iso)return null;const b=toDate(iso),t=new Date();let a=t.getFullYear()-b.getFullYear();if(t.getMonth()<b.getMonth()||(t.getMonth()===b.getMonth()&&t.getDate()<b.getDate()))a--;return a}
+function parseTime(str){if(str==null)return null;str=String(str).trim().replace(',','.');if(!str)return null;const p=str.split(':').map(Number);if(p.some(x=>isNaN(x)||x<0))return null;return p.reduce((a,x)=>a*60+x,0)}
+function fmtTime(s,dec){if(s==null||isNaN(s))return '—';dec=dec||0;const k=Math.pow(10,dec);s=Math.round(s*k)/k;const h=Math.floor(s/3600),m=Math.floor(s%3600/60),r=s-h*3600-m*60;const ss=r.toFixed(dec).padStart(dec?3+dec:2,'0');return h?h+':'+pad(m)+':'+ss:m+':'+ss}
+function fmtMin(min){min=Math.round(+min||0);const h=Math.floor(min/60),m=min%60;return h?h+' h'+(m?' '+m+' min':''):m+' min'}
+function num(v){if(v==null||v==='')return null;const x=parseFloat(String(v).replace(',','.'));return isNaN(x)?null:x}
+function normDni(v){return String(v||'').toUpperCase().replace(/[\s.-]/g,'')}
+function dniOk(v){const m=normDni(v).match(/^([XYZ]?)(\d{7,8})([A-Z])$/);if(!m)return false;let n=m[2];if(m[1])n='XYZ'.indexOf(m[1])+n;return 'TRWAGMYFPDXBNJZSQVHLCKE'[parseInt(n,10)%23]===m[3]}
+function initials(name){return String(name||'?').trim().split(/\s+/).slice(0,2).map(w=>w[0]).join('').toUpperCase()}
+function rpeColor(r){r=+r;return r<=3?'var(--ok)':r<=6?'var(--warn)':'var(--bad)'}
+function genCode(){const a='ABCDEFGHJKMNPQRSTUVWXYZ23456789';let s='';for(let i=0;i<6;i++)s+=a[Math.floor(Math.random()*a.length)];return s}
+function clean(o){const r={};for(const k in o){if(k==='id'||k==='aid')continue;if(o[k]!==undefined)r[k]=o[k]}return r}
+const byName=a=>a.slice().sort((x,y)=>(x.nombre||'').localeCompare(y.nombre||'','es'));
+const sortSes=a=>a.slice().sort((x,y)=>((y.fecha||'')+(y.hora||'')).localeCompare((x.fecha||'')+(x.hora||'')));
+
+const depById=id=>S.deportistas.find(d=>d.id===id);
+const ent=dni=>S.entrenadores.find(e=>e.dni===dni);
+const ses=id=>S.sesiones.find(s=>s.id===id);
+const tareasOf=s=>((s&&s.tareas)||[]).slice().sort((a,b)=>(a.orden||0)-(b.orden||0));
+const durEf=s=>s.realizado&&s.realizado.duracion!=null?+s.realizado.duracion:(+s.duracion||0);
+const rpeEf=s=>s.realizado&&s.realizado.rpe?+s.realizado.rpe:(+s.rpe||0);
+const carga=s=>rpeEf(s)*durEf(s); // si el deportista registró lo realizado, cuenta lo real
+function cumpl(s){const r=s.realizado;if(!r||r.duracion==null)return null;const p=+s.duracion||0;return p?Math.round(100*(+r.duracion)/p):null}
+function cumplCls(p){return p==null?'':p>=90?'cb-ok':p>=50?'cb-warn':'cb-bad'}
+function estadoSes(s){if(s.realizado){const p=cumpl(s);return `<span class="zb ${cumplCls(p)||'cb-ok'}">${p!=null?'Hecho '+p+' %':'Registrada'}</span>`}
+  if(s.fecha&&s.fecha<todayISO())return '<span class="badge warn">Sin registrar</span>';return '<span class="badge">Planificada</span>'}
+const ownSes=s=>isCoach||s.creadaPor==='deportista';
+function testsOf(d,tipo){return ((d&&d.tests)||[]).filter(t=>!tipo||t.tipo===tipo).slice().sort((a,b)=>(a.fecha||'').localeCompare(b.fecha||''))}
+function lastTest(d,tipo){const h=testsOf(d,tipo);return h[h.length-1]}
+
+function avatar(d,cls){const sp='sp-'+(d.deporte||'');return d.foto?`<img class="avatar ${cls||''} ${sp}" src="${esc(d.foto)}" alt="">`:`<span class="avatar ${cls||''} ${sp}" aria-hidden="true">${esc(initials(d.nombre))}</span>`}
+function chip(sport){const s=SPORTS[sport];return s?`<span class="chip sp-${sport}">${s.n}</span>`:''}
+
+/* ================= % de esfuerzo sobre los tests =================
+   El % se aplica a lo que mide cada test:
+   FTP → % de la potencia · VO₂ máx → % del VO₂ máx ·
+   Contrarreloj 30 min, Contrarreloj 2000 m y Sprint 200 m → % de la velocidad media del test,
+   que se expresa como ritmo en min/km (km/h en ciclismo). */
+function refsDe(d){return Object.keys(TESTS).map(k=>lastTest(d,k)).filter(t=>t&&t.valor>0)}
+function refDefault(d){const pref=REF_PREF[d&&d.deporte]||Object.keys(TESTS);for(const k of pref){if(lastTest(d,k))return k}return ''}
+function velTest(t){return t.tipo==='cr30'?t.valor/1800:t.tipo==='cr2000'?2000/t.valor:t.tipo==='sp200'?200/t.valor:null}
+function intensidad(test,pct,deporte){ // test: {tipo,valor,fecha}
+  if(!test||!(test.valor>0)||!(pct>0))return null;const p=pct/100;
+  if(test.tipo==='ftp')return {kind:'potencia',w:test.valor*p,txt:Math.round(test.valor*p)+' W'};
+  if(test.tipo==='vo2')return {kind:'vo2',txt:nf.format(test.valor*p)+' ml/kg/min'};
+  const v=velTest(test);if(!v)return null;const sp=v*p;
+  return {kind:'velocidad',speed:sp,txt:deporte==='ciclismo'?nf.format(sp*3.6)+' km/h':fmtTime(1000/sp)+' /km',pace:fmtTime(1000/sp),kmh:Math.round(sp*36)/10};
+}
+function pctClass(p){p=+p;return p<70?1:p<85?2:p<95?3:p<=105?4:5}
+function pctBadge(p){return p?`<span class="zb zc${pctClass(p)}">${nf.format(p)} %</span>`:''}
+function refsTable(d,pct){const refs=refsDe(d);pct=pct||100;
+  return `<div class="zt">${refs.map(t=>{const it=intensidad(t,pct,d.deporte);return `<div class="zr"><span class="zb zc${pctClass(pct)}">${nf.format(pct)} %</span><span class="zn">${TESTS[t.tipo].n}<small>${fmtTest(t)} · ${esc(fmtDate(t.fecha))}</small></span><span class="zv">${it?esc(it.txt):'—'}</span></div>`}).join('')}</div>`}
+function refsNeeded(){return 'Registra un test (FTP, VO₂ máx, contrarreloj de 30 min o de 2000 m, sprint de 200 m) para poder calcular las cargas por % de esfuerzo.'}
+
+/* ================= Elección automática del test =================
+   · Tareas de potencia → FTP. En ciclismo, también las de tiempo y frecuencia.
+   · Distancia, ritmo y el resto → el test de velocidad (Sprint 200 m, Contrarreloj 2000 m o Contrarreloj 30 min)
+     cuya distancia o duración se parece más a la de la serie.
+   · Si la serie no tiene distancia ni duración → el test principal del deporte.
+   · Si no hay ninguno de esos tests → FTP y, en último caso, VO₂ máx. */
+const SPEED_TESTS=['sp200','cr2000','cr30'];
+function testLen(t){ // duración (s) y distancia (m) características de cada test
+  if(t.tipo==='sp200')return {s:t.valor,m:200};
+  if(t.tipo==='cr2000')return {s:t.valor,m:2000};
+  return {s:1800,m:t.valor};
+}
+function fmtDist(m){return m>=1000?nf.format(m/1000)+' km':n0.format(m)+' m'}
+function autoRef(d,tipo,dist,secs){
+  const ftp=lastTest(d,'ftp'),vo2=lastTest(d,'vo2');
+  const speed=SPEED_TESTS.map(k=>lastTest(d,k)).filter(t=>t&&t.valor>0);
+  const wantsFTP=tipo==='potencia'||(d.deporte==='ciclismo'&&tipo!=='distancia'&&tipo!=='ritmo');
+  if(wantsFTP&&ftp)return {test:ftp,why:tipo==='potencia'?'es una tarea de potencia':'en ciclismo sin distancia ni ritmo se usa la FTP'};
+  if(speed.length){
+    let best=null,bd=Infinity,why;
+    if(dist>0){speed.forEach(t=>{const x=Math.abs(Math.log(dist/testLen(t).m));if(x<bd){bd=x;best=t}});why='una serie de '+fmtDist(dist)+' se parece más a esta prueba'}
+    else if(secs>0){speed.forEach(t=>{const x=Math.abs(Math.log(secs/testLen(t).s));if(x<bd){bd=x;best=t}});why='una serie de '+fmtTime(secs)+' se parece más a esta prueba'}
+    else{const pref=(REF_PREF[d.deporte]||[]).filter(k=>SPEED_TESTS.includes(k));best=pref.map(k=>speed.find(t=>t.tipo===k)).find(Boolean)||speed[0];
+      why='sin distancia ni duración se usa el test principal de '+(SPORTS[d.deporte]?SPORTS[d.deporte].n.toLowerCase():'su deporte')}
+    return {test:best,why};
+  }
+  if(ftp)return {test:ftp,why:'es el único test de rendimiento registrado'};
+  if(vo2)return {test:vo2,why:'es el único test registrado'};
+  return null;
+}
+
+/* ================= Tareas: valor, objetivo y duración ================= */
+function parseVal(tipo,raw,unidad){raw=String(raw??'').trim();if(!raw)return null;
+  if(tipo==='tiempo')return parseTime(raw);
+  if(tipo==='ritmo'){if(unidad==='km/h'){const n=num(raw);return n!=null&&n>0?String(n).replace('.',','):null}return parseTime(raw)!=null?raw:null}
+  const n=num(raw);return n!=null&&n>=0?n:null}
+function evalTask(raw,d){ // raw: {tipo, valor (texto), unidad, pct, dur}
+  const tipo=raw.tipo,unidad=raw.unidad||'';const txt=String(raw.valor??'').trim();
+  let v=parseVal(tipo,txt,unidad);const invalid=txt!==''&&v==null;
+  const pctOk=raw.pct>0&&raw.pct<=200;const pct=pctOk?raw.pct:null;
+  const dist=tipo==='distancia'&&typeof v==='number'&&v>0?v*(unidad==='km'?1000:1):null;
+  const secs=tipo==='tiempo'&&v>0?v:(raw.dur>0?raw.dur*60:null);
+  const ref=pct?autoRef(d,tipo,dist,secs):null;
+  const it=ref?intensidad(ref.test,pct,d.deporte):null;
+  let filled=false;
+  if(v==null&&!invalid&&it){
+    if(tipo==='potencia'&&it.kind==='potencia'){v=Math.round(it.w);filled=true}
+    else if(tipo==='ritmo'&&it.kind==='velocidad'){v=unidad==='km/h'?String(it.kmh).replace('.',','):it.pace;filled=true}}
+  let est=null;if(tipo==='tiempo'&&v>0)est=v/60;else if(dist&&it&&it.speed)est=dist/it.speed/60;
+  const dur=raw.dur>0?raw.dur:(est!=null?Math.round(est*10)/10:null);
+  let err='';
+  if(raw.pct!=null&&!pctOk)err='El % de esfuerzo tiene que estar entre 1 y 200.';
+  else if(pct&&!ref)err='No hay ningún test registrado sobre el que calcular el % de esfuerzo.';
+  else if(invalid)err='Revisa el valor de '+TASKS[tipo].toLowerCase()+(tipo==='tiempo'||(tipo==='ritmo'&&unidad!=='km/h')?' (formato mm:ss).':'.');
+  else if(v==null)err=tipo==='potencia'&&pct?'Para calcular la potencia hace falta un test de FTP: escribe los vatios.'
+    :tipo==='ritmo'&&pct?'Para calcular el ritmo hace falta una contrarreloj o el sprint: escribe el ritmo.'
+    :'Indica el valor de '+TASKS[tipo].toLowerCase()+(tipo==='potencia'||tipo==='ritmo'?' o un % de esfuerzo.':'.');
+  return {tipo,unidad,v,filled,pct,ref,it,est,dur,durEst:!(raw.dur>0)&&est!=null&&tipo!=='tiempo',err};
+}
+function toPart(e){
+  const p={tipo:e.tipo,esfuerzo:e.pct,referencia:e.ref?{tipo:e.ref.test.tipo,valor:e.ref.test.valor,fecha:e.ref.test.fecha}:null,objetivo:e.it?e.it.txt:'',duracion:e.dur,duracionEstimada:e.durEst};
+  p[e.tipo]=e.v;if(e.unidad&&e.tipo!=='potencia'&&e.tipo!=='tiempo')p.unidad=e.unidad;return p}
+
+/* ================= Duración de las tareas ================= */
+function minSerie(t){return t.duracion!=null&&t.duracion!==''?+t.duracion:null}
+function totalTarea(t){const m=minSerie(t);if(m==null)return null;const n=Math.max(1,+t.series||1);return n*m+(n-1)*((+t.descanso||0)/60)}
+function totalTareas(tareas){return tareas.reduce((a,t)=>a+(totalTarea(t)||0),0)}
+function sinDuracion(tareas){return tareas.filter(t=>minSerie(t)==null||(t.tipo==='compuesta'&&(t.partes||[]).some(p=>minSerie(p)==null))).length}
+
+/* ================= Almacenamiento ================= */
+function localStore(){
+  let docs={};try{docs=JSON.parse(localStorage.getItem('reg-ent.v2')||'{}')||{}}catch(e){docs={}}
+  const subs=new Set();const parent=p=>p.slice(0,p.lastIndexOf('/'));const last=p=>p.slice(p.lastIndexOf('/')+1);
+  const fire=()=>{try{localStorage.setItem('reg-ent.v2',JSON.stringify(docs))}catch(e){}subs.forEach(s=>s())};
+  return{
+    subCol(path,cb){const s=()=>cb(Object.keys(docs).filter(k=>parent(k)===path).map(k=>Object.assign({},docs[k],{id:last(k)})));subs.add(s);s();return()=>subs.delete(s)},
+    subDoc(path,cb){const s=()=>cb(docs[path]?Object.assign({},docs[path],{id:last(path)}):null);subs.add(s);s();return()=>subs.delete(s)},
+    async set(p,d){docs[p]=JSON.parse(JSON.stringify(clean(d)));fire()},
+    async update(p,d){if(!docs[p])throw{code:'invalid_argument'};docs[p]=Object.assign({},docs[p],JSON.parse(JSON.stringify(clean(d))));fire()},
+    async del(p){delete docs[p];fire()}
+  };
+}
+function dbStore(db){
+  const onErr=e=>toast(errMsg(e),true);
+  return{
+    subCol(path,cb){return db.collection(path).onSnapshot(s=>cb(s.docs.map(d=>Object.assign({},d.data(),{id:d.id}))),onErr)},
+    subDoc(path,cb){return db.doc(path).onSnapshot(s=>cb(s.exists?Object.assign({},s.data(),{id:s.id}):null),onErr)},
+    set:(p,d)=>db.doc(p).set(clean(d)),
+    update:(p,d)=>db.doc(p).update(clean(d)),
+    del:p=>db.doc(p).delete()
+  };
+}
+function errMsg(e){const c=e&&e.code;
+  if(c==='invalid_argument')return isCoach?'No tienes permiso para modificar estos datos. Pide al propietario acceso de editor.':'Tu acceso es de solo lectura. Tu entrenador puede registrar estos datos por ti.';
+  if(c==='quota_exceeded')return 'El registro ha llegado a su límite de espacio. Elimina sesiones o fotos antiguas para seguir guardando.';
+  if(c==='revoked')return 'Se ha retirado tu acceso a este registro.';
+  if(c==='resource_exhausted')return 'Demasiadas operaciones seguidas. Espera unos segundos y vuelve a intentarlo.';
+  return 'No se ha podido guardar. Comprueba la conexión y vuelve a intentarlo.'}
+async function W(op,path,data){try{return await store[op](path,data)}catch(e){toast(errMsg(e),true);throw e}}
+const pAt=id=>`atletas/${id}`, pSes=(aid,sid)=>`atletas/${aid}/sesiones/${sid}`;
+
+let toastT=null;
+function toast(msg,bad){const t=$('#toast');t.textContent=msg;t.className='toast'+(bad?' bad':'');t.hidden=false;clearTimeout(toastT);toastT=setTimeout(()=>{t.hidden=true},bad?5200:2600)}
+
+/* ================= Suscripciones ================= */
+function setAtletas(rows){
+  ALL.deportistas=rows.filter(r=>!r.pendiente&&r.nombre);
+  ALL.solicitudes=rows.filter(r=>r.pendiente);
+  ready.atletas=true;
+  const ids=new Set(ALL.deportistas.map(d=>d.id));
+  for(const [id,un] of sesSubs)if(!ids.has(id)){un();sesSubs.delete(id);sesByAid.delete(id);sesLoaded.delete(id)}
+  for(const id of ids)if(!sesSubs.has(id))sesSubs.set(id,store.subCol(`atletas/${id}/sesiones`,r=>{sesByAid.set(id,r.map(x=>Object.assign(x,{aid:id})));sesLoaded.add(id);rebuildSes()}));
+  rebuildSes();
+}
+function rebuildSes(){ALL.sesiones=[].concat(...sesByAid.values());applyView();render()}
+/* Vista previa: el entrenador ve la aplicación tal como la ve un deportista (solo cambia lo que se muestra). */
+function applyView(){
+  if(viewAs&&!ALL.deportistas.some(d=>d.id===viewAs))viewAs=null;
+  if(viewAs){isCoach=false;S.deportistas=ALL.deportistas.filter(d=>d.id===viewAs);S.sesiones=ALL.sesiones.filter(s=>s.aid===viewAs);S.solicitudes=[]}
+  else{isCoach=realCoach;S.deportistas=ALL.deportistas;S.sesiones=ALL.sesiones;S.solicitudes=ALL.solicitudes}
+}
+function setViewAs(id){viewAs=id||null;closeSheet();applyView();setStatus(sharedMode);
+  if(location.hash==='#panel'||!location.hash){view='panel';render()}else location.hash='#panel';window.scrollTo(0,0)}
+function startCoach(){
+  store.subCol('entrenadores',r=>{S.entrenadores=r;ready.entrenadores=true;render()});
+  store.subCol('atletas',setAtletas);
+}
+function startAthlete(){
+  store.subCol('entrenadores',r=>{S.entrenadores=r;ready.entrenadores=true;render()});
+  store.subDoc(pAt(myId),d=>{myDoc=d;ready.atletas=true;
+    ALL.deportistas=d&&!d.pendiente&&d.nombre?[d]:[];ALL.solicitudes=[];applyView();
+    if(S.deportistas.length&&!sesSubs.has(myId))sesSubs.set(myId,store.subCol(`atletas/${myId}/sesiones`,r=>{sesByAid.set(myId,r.map(x=>Object.assign(x,{aid:myId})));sesLoaded.add(myId);rebuildSes()}));
+    render()});
+}
+
+/* ================= Vistas ================= */
+const R={};
+function weekStart(d){const x=new Date(d.getFullYear(),d.getMonth(),d.getDate());x.setDate(x.getDate()-((x.getDay()+6)%7));return x}
+
+R.panel=function(){
+  const last=sortSes(S.sesiones)[0];
+  const recent=sortSes(S.sesiones).slice(0,6);
+  const me=!isCoach&&S.deportistas[0];
+  const sumTxt=w=>`<span class="week-sum">Esta semana: <b>${w.n}</b> ${w.n===1?'sesión':'sesiones'} · <b>${fmtMin(w.min)}</b> · <b>${n0.format(w.v)}</b> UA</span>`;
+  const recentCard=`<section class="card" style="display:grid;gap:12px">
+      <div class="card-head" style="margin:0"><h3>Últimas sesiones</h3><a href="#sesiones" class="eyebrow">Ver todas</a></div>
+      ${recent.length?`<div class="rows">${recent.map(sesRow).join('')}</div>`:`<p class="muted">Aún no hay sesiones. Crea la primera con «Nueva sesión».</p>`}</section>`;
+  const head=`<div class="view-head"><div><h2>${isCoach?'Panel':'Hola, '+esc((me&&me.nombre||'').split(' ')[0])}</h2><p>${isCoach?'Carga de entrenamiento de cada deportista y últimas sesiones registradas.':'Tu carga de entrenamiento, tus últimas sesiones y tus tests de referencia.'}</p></div>
+    <div class="actions-row"><button class="btn" data-action="new-test">Registrar test</button><button class="btn primary" data-action="new-sesion">Nueva sesión</button></div></div>`;
+  if(!isCoach){
+    const wk=weeksLoad(S.sesiones);
+    const pend=sortSes(S.sesiones.filter(s=>!s.realizado&&s.fecha&&s.fecha<=todayISO()));
+    const avisoAt=pend.length?`<div class="notice"><span>${pend.length===1?'Tienes 1 sesión':'Tienes '+pend.length+' sesiones'} sin registrar. Apunta lo que hiciste para que tu entrenador lo vea.</span><button class="btn small primary" data-action="open-sesion" data-id="${esc(pend[0].id)}">Registrar la última</button></div>`:'';
+    return head+avisoAt+`<div class="panel-grid"><div class="stack">
+      <section class="card"><div class="card-head"><h3>Carga semanal</h3>${sumTxt(wk[7])}</div>${loadChart(wk,me&&me.deporte,true)}
+        <div class="legend"><span class="eyebrow" style="margin-left:auto">sRPE = RPE × minutos (UA)</span></div></section>
+      ${me?`<section class="card"><div class="card-head"><h3>Tus referencias (100 %)</h3><a href="#tests" class="eyebrow">Calculadora</a></div>${refsDe(me).length?refsTable(me,100):`<p class="muted">${refsNeeded()}</p>`}</section>`:''}
+    </div>${recentCard}</div>`;
+  }
+  let top='';
+  const steps=[
+    {ok:S.entrenadores.length>0,t:'Registra un entrenador',d:'DNI, correo y especialidad.',a:'new-entrenador',b:'Añadir entrenador'},
+    {ok:S.deportistas.length>0,t:'Da de alta a un deportista',d:'Recibirá un código para vincular su propia cuenta.',a:'new-deportista',b:'Añadir deportista'},
+    {ok:S.deportistas.some(d=>(d.tests||[]).length),t:'Registra un test',d:'Sobre sus resultados se calcula el % de esfuerzo de cada tarea.',a:'new-test',b:'Registrar test'},
+    {ok:S.sesiones.some(s=>(s.tareas||[]).length),t:'Diseña una sesión con tareas',d:'La duración de la sesión se calcula sumando sus tareas.',a:last?'open-sesion':'new-sesion',id:last&&last.id,b:last?'Abrir sesión':'Nueva sesión'}
+  ];
+  if(steps.some(s=>!s.ok))top+=`<section class="card steps"><div class="card-head"><h3>Primeros pasos</h3><span class="eyebrow">${steps.filter(s=>s.ok).length} de 4</span></div>
+    ${steps.map((s,i)=>`<div class="step ${s.ok?'done':''}"><span class="n">${s.ok?'✓':i+1}</span><div><div class="t">${s.t}</div><div class="d">${s.d}</div></div>
+    ${s.ok?'<span></span>':`<button class="btn small" data-action="${s.a}" ${s.id?`data-id="${esc(s.id)}"`:''}>${s.b}</button>`}</div>`).join('')}</section>`;
+  const pend=linkItems().length;
+  if(pend)top=`<div class="notice"><span>${pend===1?'Hay 1 solicitud':'Hay '+pend+' solicitudes'} de vinculación de cuentas de deportistas.</span><a class="btn small" href="#deportistas">Revisar</a></div>`+top;
+  const deps=byName(S.deportistas);
+  const counts=Object.keys(SPORTS).map(k=>[k,S.deportistas.filter(d=>d.deporte===k).length]);
+  return head+top+`
+  <section style="margin-bottom:22px"><div class="card-head"><h3>Carga semanal por deportista</h3><span class="eyebrow">sRPE = RPE × minutos (UA) · últimas 8 semanas</span></div>
+    ${deps.length?`<div class="loads">${deps.map(d=>{const wk=weeksLoad(S.sesiones.filter(s=>s.aid===d.id));
+      return `<article class="card load sp-${esc(d.deporte)}" data-action="open-deportista" data-id="${esc(d.id)}" role="button" tabindex="0" aria-label="Abrir la ficha de ${esc(d.nombre)}">
+        <div class="load-head">${avatar(d,'sm')}<div style="min-width:0"><strong>${esc(d.nombre)}</strong><div>${chip(d.deporte)}</div></div></div>
+        ${loadChart(wk,d.deporte,false)}${sumTxt(wk[7])}</article>`}).join('')}</div>`
+    :`<p class="muted">Cuando des de alta a los deportistas, aquí aparecerá la gráfica de cada uno.</p>`}</section>
+  ${revisarHTML()}
+  <div class="panel-grid">${recentCard}
+    <section class="card" style="display:grid;gap:10px"><h3>Plantilla</h3><div class="actions-row">${counts.map(([k,n])=>`<span class="chip sp-${k}">${SPORTS[k].n} · ${n}</span>`).join('')}</div></section></div>`;
+};
+
+function revisarHTML(){const hoy=todayISO();const d0=new Date();d0.setDate(d0.getDate()-14);const desde=d0.getFullYear()+'-'+pad(d0.getMonth()+1)+'-'+pad(d0.getDate());
+  const list=sortSes(S.sesiones.filter(s=>s.fecha&&s.fecha>=desde&&s.fecha<=hoy&&(s.realizado?((cumpl(s)??100)<90||Object.values(s.realizado.tareas||{}).some(x=>x.estado&&x.estado!=='completada')):s.fecha<hoy)));
+  return `<section class="card" style="display:grid;gap:12px;margin-bottom:22px"><div class="card-head" style="margin:0"><h3>Para revisar</h3><span class="eyebrow">Últimos 14 días · incompletas o sin registrar</span></div>
+    ${list.length?`<div class="rows">${list.slice(0,10).map(sesRow).join('')}</div>${list.length>10?`<p class="muted" style="font-size:13px">Y ${list.length-10} más en Sesiones.</p>`:''}`:'<p class="muted">Todo en orden: no hay sesiones incompletas ni sin registrar.</p>'}</section>`}
+function weeksLoad(list){const cur=weekStart(new Date()),weeks=[];
+  for(let i=7;i>=0;i--){const w=new Date(cur);w.setDate(w.getDate()-7*i);weeks.push({t:w.getTime(),d:w,v:0,n:0,min:0})}
+  list.forEach(s=>{if(!s.fecha)return;const t=weekStart(toDate(s.fecha)).getTime();const w=weeks.find(x=>x.t===t);if(w){w.v+=carga(s);w.n++;w.min+=durEf(s)}});
+  return weeks}
+function loadChart(weeks,sport,big){
+  const max=Math.max(0,...weeks.map(w=>w.v));
+  const steps=[50,100,200,250,500,1000,2000,2500,5000,10000,20000];const step=steps.find(s=>max/s<=(big?4:2))||50000;const ymax=Math.max(step,Math.ceil(max/step)*step);
+  const W=big?640:320,H=big?220:130,L=big?48:38,Rm=8,T=14,B=big?26:22,iw=W-L-Rm,ih=H-T-B,bw=iw/8;const y=v=>T+ih-(v/ymax)*ih;
+  const cls=SPORTS[sport]?SPORTS[sport].f:'f-run';
+  let g='';for(let v=0;v<=ymax;v+=step){g+=`<line class="grid" x1="${L}" x2="${W-Rm}" y1="${y(v).toFixed(1)}" y2="${y(v).toFixed(1)}"/><text x="${L-6}" y="${(y(v)+4).toFixed(1)}" text-anchor="end">${n0.format(v)}</text>`}
+  let bars='';weeks.forEach((w,i)=>{const x=L+i*bw+bw*.18,wd=bw*.64;
+    if(w.v){bars+=`<rect class="${cls}" x="${x.toFixed(1)}" y="${y(w.v).toFixed(1)}" width="${wd.toFixed(1)}" height="${(y(0)-y(w.v)).toFixed(1)}" rx="1.5"><title>Semana del ${pad(w.d.getDate())}/${pad(w.d.getMonth()+1)}: ${n0.format(w.v)} UA · ${w.n} sesiones</title></rect>`;
+      bars+=`<text class="tot" x="${(x+wd/2).toFixed(1)}" y="${(y(w.v)-4).toFixed(1)}" text-anchor="middle">${n0.format(w.v)}</text>`}
+    if(big||i%2===1)bars+=`<text x="${(x+wd/2).toFixed(1)}" y="${H-7}" text-anchor="middle">${i===7?'Esta':pad(w.d.getDate())+'/'+pad(w.d.getMonth()+1)}</text>`});
+  const none=max===0?`<text x="${L+iw/2}" y="${T+ih/2}" text-anchor="middle">Sin sesiones en 8 semanas</text>`:'';
+  return `<svg class="chart${big?'':' mini'}" viewBox="0 0 ${W} ${H}" role="img" aria-label="Carga semanal de las últimas 8 semanas">${g}${bars}${none}</svg>`;
+}
+
+function sesRow(s){const d=depById(s.aid)||{};const nt=(s.tareas||[]).length;
+  return `<button class="row sp-${esc(d.deporte||'')}" data-action="open-sesion" data-id="${esc(s.id)}">
+    <span class="bar"></span>
+    <span class="main"><strong>${esc(isCoach?(d.nombre||'Deportista'):(s.objetivo||'Sesión'))}</strong><span>${esc(isCoach?(s.objetivo||'Sin objetivo'):(SPORTS[d.deporte]?SPORTS[d.deporte].n:''))}</span></span>
+    <span class="meta"><span class="badge">${esc(fmtDate(s.fecha,{day:'numeric',month:'short'}))} ${esc(s.hora||'')}</span><span class="badge">${s.realizado&&s.realizado.duracion!=null?n0.format(+s.realizado.duracion)+' / '+n0.format(+s.duracion||0)+' min':fmtMin(s.duracion)}</span>${rpeEf(s)?`<span class="rpe" style="background:${rpeColor(rpeEf(s))}">RPE ${esc(rpeEf(s))}</span>`:''}<span class="badge">${nt} ${nt===1?'tarea':'tareas'}</span>${estadoSes(s)}</span></button>`}
+
+R.sesiones=function(){
+  let list=sortSes(S.sesiones);
+  if(fDep)list=list.filter(s=>s.aid===fDep);
+  if(fSport)list=list.filter(s=>{const d=depById(s.aid);return d&&d.deporte===fSport});
+  const groups=[];list.forEach(s=>{let g=groups[groups.length-1];if(!g||g.f!==s.fecha){g={f:s.fecha,l:[]};groups.push(g)}g.l.push(s)});
+  return `<div class="view-head"><div><h2>${isCoach?'Sesiones':'Mis sesiones'}</h2><p>${isCoach?'Cada sesión la realiza un deportista y la diseña un entrenador. Ábrela para ver y añadir sus tareas.':'Tus sesiones de entrenamiento. Ábrelas para ver las tareas y anotar el RPE.'}</p></div>
+    <button class="btn primary" data-action="new-sesion">Nueva sesión</button></div>
+  ${isCoach?`<div class="toolbar">
+    <label class="field"><span>Deportista</span><select id="f-dep"><option value="">Todos</option>${byName(S.deportistas).map(d=>`<option value="${esc(d.id)}" ${d.id===fDep?'selected':''}>${esc(d.nombre)}</option>`).join('')}</select></label>
+    <label class="field"><span>Deporte</span><select id="f-sport"><option value="">Todos</option>${Object.keys(SPORTS).map(k=>`<option value="${k}" ${k===fSport?'selected':''}>${SPORTS[k].n}</option>`).join('')}</select></label>
+    <span class="eyebrow" style="margin-left:auto;padding-bottom:9px">${list.length} ${list.length===1?'sesión':'sesiones'} · ${n0.format(list.reduce((a,s)=>a+carga(s),0))} UA</span></div>`:''}
+  ${groups.length?groups.map(g=>`<div class="day"><div class="eyebrow">${esc(fmtDay(g.f))}</div><div class="rows">${g.l.map(sesRow).join('')}</div></div>`).join('')
+   :`<div class="empty"><strong>Sin sesiones</strong>${S.sesiones.length?'Ninguna sesión coincide con los filtros.':'Registra la primera sesión de entrenamiento.'}<br>${S.sesiones.length?'':'<button class="btn primary" data-action="new-sesion">Nueva sesión</button>'}</div>`}`;
+};
+
+/* --- vinculación de cuentas (entrenador) --- */
+function linkItems(){
+  const items=[];
+  S.solicitudes.forEach(c=>{const code=String(c.codigo||'').toUpperCase().trim();const m=S.deportistas.find(d=>!d.cuenta&&d.codigo===code);items.push({kind:'claim',c,m,code})});
+  S.deportistas.filter(d=>!d.cuenta).forEach(u=>{const l=S.deportistas.find(d=>d.cuenta&&d.dni&&d.dni===u.dni);if(l)items.push({kind:'dup',u,l})});
+  return items;
+}
+function linkSection(){const items=linkItems();if(!items.length)return '';
+  return `<h3 style="margin-bottom:10px">Vinculación de cuentas</h3><div class="link-list">${items.map(it=>{
+    if(it.kind==='claim'&&it.m)return `<div class="link-item"><div><strong>${esc(it.m.nombre)}</strong> ha introducido su código <span class="mono">${esc(it.code)}</span>.<div class="muted" style="font-size:13.5px">Al vincular, su ficha, sus sesiones y sus tests pasan a su cuenta y solo los verá él o ella.</div></div>
+      <div class="actions-row"><button class="btn small danger" data-action="del-claim" data-id="${esc(it.c.id)}">Descartar</button><button class="btn small primary" data-action="link" data-from="${esc(it.m.id)}" data-to="${esc(it.c.id)}" ${sesLoaded.has(it.m.id)?'':'disabled'}>Vincular cuenta</button></div></div>`;
+    if(it.kind==='claim')return `<div class="link-item"><div>Alguien ha introducido el código <span class="mono">${esc(it.code||'—')}</span>, que no coincide con ningún deportista.</div>
+      <div class="actions-row"><button class="btn small danger" data-action="del-claim" data-id="${esc(it.c.id)}">Descartar</button><button class="btn small" data-action="new-deportista" data-link="${esc(it.c.id)}">Crear deportista con esa cuenta</button></div></div>`;
+    return `<div class="link-item"><div><strong>${esc(it.l.nombre)}</strong> ha creado su ficha con su cuenta y ya tenías una ficha sin cuenta con el mismo DNI (${esc(it.u.dni)}).<div class="muted" style="font-size:13.5px">Fusionar mueve las sesiones y los tests de la ficha antigua a su cuenta.</div></div>
+      <div class="actions-row"><button class="btn small primary" data-action="link" data-from="${esc(it.u.id)}" data-to="${esc(it.l.id)}" ${sesLoaded.has(it.u.id)?'':'disabled'}>Fusionar fichas</button></div></div>`}).join('')}</div>`}
+
+R.deportistas=function(){
+  if(!isCoach){const d=S.deportistas[0];return `<div class="view-head"><div><h2>Mi ficha</h2><p>Tus datos, tus zonas de entrenamiento y tu historial.</p></div></div><div class="card" style="display:grid;gap:20px">${fichaHTML(d)}</div>`}
+  const list=byName(S.deportistas);
+  return `<div class="view-head"><div><h2>Deportistas</h2><p>Cada deportista vincula su cuenta con un código y solo ve sus propios datos.</p></div>
+    <button class="btn primary" data-action="new-deportista">Añadir deportista</button></div>
+  ${linkSection()}
+  ${list.length?`<div class="athletes">${list.map(d=>{const e=ent(d.dniEntrenador);const n=S.sesiones.filter(s=>s.aid===d.id).length;const a=age(d.fechaNacimiento);const nt=refsDe(d).length;
+    return `<button class="ath sp-${esc(d.deporte)}" data-action="open-deportista" data-id="${esc(d.id)}">${avatar(d)}
+      <div style="min-width:0;display:grid;gap:4px;align-content:center"><h3>${esc(d.nombre)}</h3><div class="actions-row" style="gap:6px">${chip(d.deporte)}${d.cuenta?'':'<span class="badge warn">Sin cuenta</span>'}</div></div>
+      <dl><div><dt>Edad</dt><dd>${a!=null?a:'—'}</dd></div><div><dt>Sesiones</dt><dd>${n}</dd></div><div><dt>Tests</dt><dd>${nt} de 5</dd></div></dl>
+      <div class="muted" style="grid-column:1/-1;font-size:13px">Entrena con ${esc(e?e.nombre:'—')}</div></button>`}).join('')}</div>`
+   :`<div class="empty"><strong>Sin deportistas</strong>Da de alta a los deportistas de ciclismo, piragüismo y carrera de fondo.<br><button class="btn primary" data-action="new-deportista">Añadir deportista</button></div>`}`;
+};
+
+function fmtTest(t){const T=TESTS[t.tipo];if(!T)return esc(t.valor);return T.kind==='time'?fmtTime(t.valor,1):nf.format(t.valor)+(T.u?' '+T.u:'')}
+function spark(vals){if(vals.length<2)return '';const W=180,H=34,mn=Math.min(...vals),mx=Math.max(...vals),r=mx-mn||1;
+  const pts=vals.map((v,i)=>[(i/(vals.length-1))*(W-6)+3,H-4-((v-mn)/r)*(H-8)]);const l=pts[pts.length-1];
+  return `<svg class="spark" viewBox="0 0 ${W} ${H}" preserveAspectRatio="none" aria-hidden="true"><polyline points="${pts.map(p=>p.map(x=>x.toFixed(1)).join(',')).join(' ')}"/><circle cx="${l[0].toFixed(1)}" cy="${l[1].toFixed(1)}" r="2.8"/></svg>`}
+
+R.tests=function(){
+  const list=byName(S.deportistas);
+  if(!list.length)return `<div class="view-head"><div><h2>Tests</h2><p>FTP, VO₂ máx, contrarreloj de 30 min, contrarreloj de 2000 m y sprint de 200 m.</p></div></div><div class="empty"><strong>Sin deportistas</strong>Antes de registrar tests, da de alta a un deportista.<br><button class="btn primary" data-action="new-deportista">Añadir deportista</button></div>`;
+  if(!testDep||!depById(testDep))testDep=list[0].id;
+  const d=depById(testDep);const all=testsOf(d).reverse();
+  return `<div class="view-head"><div><h2>${isCoach?'Tests':'Mis tests'}</h2><p>El % de esfuerzo de cada tarea se calcula sobre el último resultado de estos tests.</p></div>
+    <button class="btn primary" data-action="new-test" data-aid="${esc(testDep)}">Registrar test</button></div>
+  ${isCoach?`<div class="toolbar"><label class="field"><span>Deportista</span><select id="t-dep">${list.map(x=>`<option value="${esc(x.id)}" ${x.id===testDep?'selected':''}>${esc(x.nombre)} · ${SPORTS[x.deporte]?SPORTS[x.deporte].n:''}</option>`).join('')}</select></label></div>`:''}
+  <div class="tests">${Object.keys(TESTS).map(k=>{const T=TESTS[k];const h=testsOf(d,k);const last=h[h.length-1],prev=h[h.length-2];const isRef=false;
+    let delta='';if(last&&prev){const dv=last.valor-prev.valor;const good=T.better==='high'?dv>0:dv<0;
+      if(dv)delta=`<span class="delta ${good?'up':'down'} mono" style="font-size:12.5px">${dv>0?'+':'−'}${T.kind==='time'?fmtTime(Math.abs(dv),1):nf.format(Math.abs(dv))} vs. anterior</span>`}
+    return `<div class="test ${isRef?'ref':''}"><span class="eyebrow">${T.n}${isRef?' · referencia de zonas':''}</span>
+      ${last?`<span class="val">${T.kind==='time'?fmtTime(last.valor,1):nf.format(last.valor)}${T.u?`<small>${T.u}</small>`:''}</span><span class="muted" style="font-size:12.5px">${esc(fmtDate(last.fecha))}</span>${delta}${spark(h.map(x=>x.valor))}`
+      :`<span class="val muted">—</span><span class="muted" style="font-size:12.5px">Sin registros</span>`}</div>`}).join('')}</div>
+  <div class="panel-grid" style="margin-bottom:22px"><section class="card"><div class="card-head"><h3>Calculadora de esfuerzo</h3>
+      <label class="field" style="width:120px"><span>% de esfuerzo</span><input id="calc-pct" type="number" min="1" max="200" step="1" inputmode="numeric" value="${calcPct}"></label></div>
+    <div id="calc-out">${refsDe(d).length?refsTable(d,calcPct):`<p class="muted">${refsNeeded()}</p>`}</div>
+    <p class="muted" style="font-size:13px;margin-top:8px">FTP y VO₂ máx: % del valor del test. Contrarrelojes y sprint: % de la velocidad media del test, expresada en min/km${d.deporte==='ciclismo'?' (km/h en ciclismo)':''}.</p></section><div></div></div>
+  <h3 style="margin-bottom:10px">Historial${isCoach?' de '+esc(d.nombre):''}</h3>
+  ${all.length?`<div class="table-wrap"><table><thead><tr><th>Fecha</th><th>Test</th><th class="num">Resultado</th><th>Notas</th><th></th></tr></thead><tbody>
+    ${all.map(t=>`<tr><td class="mono">${esc(fmtDate(t.fecha))}</td><td>${esc(TESTS[t.tipo]?TESTS[t.tipo].n:t.tipo)}</td><td class="num mono">${fmtTest(t)}</td><td class="muted">${esc(t.notas||'')}</td><td style="text-align:right"><button class="btn small ghost danger" data-action="del" data-kind="test" data-aid="${esc(d.id)}" data-id="${esc(t.id)}">Eliminar</button></td></tr>`).join('')}
+  </tbody></table></div>`:`<p class="muted">Aún no hay tests registrados.</p>`}`;
+};
+
+R.entrenadores=function(){
+  const list=byName(S.entrenadores);
+  return `<div class="view-head"><div><h2>Entrenadores</h2><p>Cada entrenador entrena a sus deportistas y diseña sus sesiones.</p></div>
+    <button class="btn primary" data-action="new-entrenador">Añadir entrenador</button></div>
+  ${list.length?`<div class="table-wrap"><table><thead><tr><th>Nombre</th><th>DNI</th><th>Correo</th><th>Especialidad</th><th class="num">Deportistas</th><th class="num">Sesiones</th><th></th></tr></thead><tbody>
+    ${list.map(e=>`<tr><td><strong>${esc(e.nombre)}</strong></td><td class="mono">${esc(e.dni)}</td><td><span class="copy">${esc(e.correo||'—')}</span></td><td>${esc(e.especialidad||'—')}</td>
+      <td class="num mono">${S.deportistas.filter(d=>d.dniEntrenador===e.dni).length}</td><td class="num mono">${S.sesiones.filter(s=>s.dniEntrenador===e.dni).length}</td>
+      <td style="text-align:right;white-space:nowrap"><button class="btn small" data-action="edit-entrenador" data-id="${esc(e.id)}">Editar</button></td></tr>`).join('')}
+  </tbody></table></div>`:`<div class="empty"><strong>Sin entrenadores</strong>Empieza registrando al entrenador o entrenadora del grupo.<br><button class="btn primary" data-action="new-entrenador">Añadir entrenador</button></div>`}`;
+};
+
+/* --- deportista sin ficha --- */
+function welcomeHTML(){
+  if(!myId)return `<div class="welcome card"><h2>Inicia sesión</h2><p class="muted">Para ver tus entrenamientos tienes que abrir esta página con tu cuenta de Claude.</p></div>`;
+  if(myDoc&&myDoc.pendiente)return `<div class="welcome card"><span class="eyebrow">Solicitud enviada</span><h2>Esperando a tu entrenador</h2>
+    <p>Has enviado el código <span class="code">${esc(myDoc.codigo)}</span>. Tu ficha aparecerá aquí cuando tu entrenador o entrenadora abra la aplicación y confirme la vinculación.</p>
+    <div class="actions-row"><button class="btn danger" data-action="cancel-claim">Cancelar solicitud</button></div></div>`;
+  return `<div class="welcome"><div><span class="eyebrow">Deportista</span><h2>Vincula tu cuenta</h2><p class="muted" style="margin-top:6px">Solo verás tus propios datos: tus sesiones, tus tests y tus zonas. El resto del grupo no puede verlos.</p></div>
+    <form class="card" data-form="claim" novalidate><h3>Tengo un código de mi entrenador</h3>
+      ${field('Código de vinculación','<input id="cl-code" name="codigo" class="mono" maxlength="8" autocomplete="off" placeholder="K7M2QD" style="letter-spacing:.15em;text-transform:uppercase">','Te lo da tu entrenador desde tu ficha.')}
+      <p class="form-err"></p><div class="form-actions"><button type="submit" class="btn primary">Enviar código</button></div></form>
+    <div class="card" style="display:grid;gap:10px"><h3>No tengo código</h3><p class="muted">Crea tu ficha tú mismo. Tu entrenador la verá y podrá completarla.</p><div><button class="btn" data-action="new-deportista">Crear mi ficha</button></div></div></div>`;
+}
+
+/* ================= Panel lateral ================= */
+const SH={},LIVE={};
+const field=(label,ctl,hint)=>`<label class="field"><span>${label}</span>${ctl}${hint?`<small>${hint}</small>`:''}</label>`;
+const opt=(v,l,sel)=>`<option value="${esc(v)}" ${sel?'selected':''}>${esc(l)}</option>`;
+
+SH.entrenador=function(id){const e=S.entrenadores.find(x=>x.id===id)||{};
+  return `<div><span class="eyebrow">Entrenador</span><h2>${id?'Editar entrenador':'Nuevo entrenador'}</h2></div>
+  <form data-form="entrenador" novalidate><input type="hidden" name="id" value="${esc(id||'')}">
+    ${field('Nombre',`<input id="en-nombre" name="nombre" required value="${esc(e.nombre||'')}" autocomplete="off">`)}
+    <div class="grid2">${field('DNI Entrenador',`<input id="en-dni" name="dni" required value="${esc(e.dni||'')}" ${id?'readonly':''} class="mono" autocomplete="off">`,id?'El DNI identifica al entrenador y no se puede cambiar.':'')}
+    ${field('Especialidad',`<input id="en-esp" name="especialidad" list="esp-list" value="${esc(e.especialidad||'')}"><datalist id="esp-list"><option value="Ciclismo"><option value="Piragüismo"><option value="Carrera de fondo"><option value="Preparación física"></datalist>`)}</div>
+    ${field('Correo',`<input id="en-correo" name="correo" type="email" value="${esc(e.correo||'')}" autocomplete="off">`)}
+    <p class="form-err"></p>
+    <div class="form-actions">${id?`<button type="button" class="btn danger" data-action="del" data-kind="entrenador" data-id="${esc(id)}">Eliminar</button>`:''}<button type="submit" class="btn primary">Guardar entrenador</button></div>
+  </form>`};
+
+SH.deportista=function(arg){const id=arg&&arg.id;const d=(id&&depById(id))||{};const ents=byName(S.entrenadores);const link=arg&&arg.link;
+  return `<div><span class="eyebrow">Deportista</span><h2>${id?(isCoach?'Editar deportista':'Editar mi ficha'):(isCoach?'Nuevo deportista':'Crear mi ficha')}</h2></div>
+  <form data-form="deportista" novalidate><input type="hidden" name="id" value="${esc(id||'')}"><input type="hidden" name="link" value="${esc(link||'')}"><input type="hidden" name="foto" id="dp-foto-data" value="${esc(d.foto||'')}">
+    <div class="photo-pick"><span id="dp-foto-prev">${avatar(Object.assign({nombre:d.nombre||'?'},d),'lg')}</span>
+      <label class="field" style="flex:1"><span>Foto</span><input type="file" id="dp-foto" accept="image/*"><small>Se recorta a 240 × 240 px.</small></label></div>
+    ${field('Nombre',`<input id="dp-nombre" name="nombre" required value="${esc(d.nombre||'')}" autocomplete="off">`)}
+    <div class="grid2">${field('DNI',`<input id="dp-dni" name="dni" required class="mono" value="${esc(d.dni||'')}" ${id?'readonly':''} autocomplete="off">`,id?'No se puede cambiar.':'')}
+      ${field('Fecha de nacimiento',`<input id="dp-nac" name="fechaNacimiento" type="date" value="${esc(d.fechaNacimiento||'')}">`)}</div>
+    <div class="grid2">${field('Deporte',`<select id="dp-dep" name="deporte" required>${Object.keys(SPORTS).map(k=>opt(k,SPORTS[k].n,d.deporte===k)).join('')}</select>`)}
+      ${field('Entrenador',`<select id="dp-ent" name="dniEntrenador"><option value="">Sin asignar</option>${ents.map(e=>opt(e.dni,e.nombre,d.dniEntrenador===e.dni||(!id&&ents.length===1))).join('')}</select>`)}</div>
+    <div class="grid2">${field('FC máxima (ppm)',`<input id="dp-fcmax" name="fcMax" type="number" min="100" max="240" inputmode="numeric" value="${esc(d.fcMax||'')}">`,'<span id="dp-fc-hint"></span>')}
+      ${field('FC en reposo (ppm)',`<input id="dp-fcrep" name="fcReposo" type="number" min="25" max="110" inputmode="numeric" value="${esc(d.fcReposo||'')}">`)}</div>
+    ${field('Objetivos',`<textarea id="dp-obj" name="objetivos" placeholder="Ej.: bajar de 7:40 en 2000 m K1 antes del campeonato">${esc(d.objetivos||'')}</textarea>`)}
+    ${isCoach&&!id&&!link?'<p class="muted" style="font-size:13.5px">Al guardar se genera un código para que el deportista vincule su cuenta y vea solo sus datos.</p>':''}
+    <p class="form-err"></p>
+    <div class="form-actions"><button type="submit" class="btn primary">Guardar</button></div>
+  </form>`};
+
+SH.sesion_form=function(arg){const id=arg&&arg.id;const s=(id&&ses(id))||{};const deps=byName(S.deportistas);
+  const asel=s.aid||(arg&&arg.aid)||(deps[0]&&deps[0].id);const dd=depById(asel);const esel=s.dniEntrenador||(dd&&dd.dniEntrenador)||'';
+  const auto=s.duracionAuto!==false;const calc=Math.round(totalTareas(tareasOf(s)));
+  return `<div><span class="eyebrow">Sesión</span><h2>${id?'Editar sesión':'Nueva sesión'}</h2></div>
+  <form data-form="sesion" novalidate><input type="hidden" name="id" value="${esc(id||'')}">
+    <div class="grid2">${isCoach?field('Deportista',`<select id="ss-dep" name="aid" required ${id?'disabled':''}>${deps.map(d=>opt(d.id,d.nombre,d.id===asel)).join('')}</select>`,'Realiza la sesión'):`<input type="hidden" name="aid" value="${esc(asel)}">`}
+      ${field('Entrenador',`<select id="ss-ent" name="dniEntrenador"><option value="">Sin asignar</option>${byName(S.entrenadores).map(e=>opt(e.dni,e.nombre,e.dni===esel)).join('')}</select>`,'Diseña la sesión')}</div>
+    ${id&&isCoach?`<input type="hidden" name="aid" value="${esc(asel)}">`:''}
+    <div class="grid2">${field('Fecha',`<input id="ss-fecha" name="fecha" type="date" required value="${esc(s.fecha||todayISO())}">`)}
+      ${field('Hora',`<input id="ss-hora" name="hora" type="time" required value="${esc(s.hora||nowHM())}">`)}</div>
+    <div class="field"><span>Duración (min)</span>
+      <label class="check"><input type="checkbox" id="ss-auto" name="auto" ${auto?'checked':''}> Calcular con la suma de las tareas</label>
+      <input id="ss-dur" name="duracion" type="number" min="0" max="900" inputmode="numeric" value="${esc(auto?calc:(s.duracion||''))}" ${auto?'disabled':''} data-calc="${calc}">
+      <small id="ss-dur-hint">${auto?(id?'Se actualiza al añadir, editar o quitar tareas.':'Empieza en 0 y se calcula al añadir las tareas.'):'Duración fijada a mano.'}</small></div>
+    ${field('Objetivo',`<input id="ss-obj" name="objetivo" value="${esc(s.objetivo||'')}" placeholder="Ej.: Umbral láctico, rodaje Z2, técnica de palada">`)}
+    ${field('RPE (escala CR10)',`<div style="display:flex;gap:12px;align-items:center"><input id="ss-rpe" name="rpe" type="range" min="1" max="10" step="1" value="${esc(s.rpe||5)}"><output id="ss-rpe-out" class="rpe" style="background:${rpeColor(s.rpe||5)};min-width:150px;text-align:center">${s.rpe||5} · ${RPE[s.rpe||5]}</output></div>`,'Esfuerzo percibido de la sesión completa. Carga = RPE × duración.')}
+    <p class="form-err"></p>
+    <div class="form-actions"><button type="submit" class="btn primary">${id?'Guardar cambios':'Crear sesión y añadir tareas'}</button></div>
+  </form>`};
+
+SH.test=function(arg){const deps=byName(S.deportistas);const asel=(arg&&arg.aid)||testDep||(deps[0]&&deps[0].id);const dd=depById(asel)||{};
+  const def={ciclismo:'ftp',piraguismo:'cr2000',carrera:'cr30'}[dd.deporte]||'ftp';
+  return `<div><span class="eyebrow">Test de rendimiento</span><h2>Registrar test</h2></div>
+  <form data-form="test" novalidate>
+    <div class="grid2">${isCoach?field('Deportista',`<select id="te-dep" name="aid" required>${deps.map(d=>opt(d.id,d.nombre,d.id===asel)).join('')}</select>`):`<input type="hidden" name="aid" value="${esc(asel)}">`}
+      ${field('Test',`<select id="te-tipo" name="tipo">${Object.keys(TESTS).map(k=>opt(k,TESTS[k].n,k===def)).join('')}</select>`)}</div>
+    <div class="grid2">${field('Fecha',`<input id="te-fecha" name="fecha" type="date" required value="${todayISO()}">`)}
+      <label class="field"><span id="te-vlabel">Resultado</span><input id="te-valor" name="valor" required class="mono" inputmode="decimal" autocomplete="off"><small id="te-vhint"></small></label></div>
+    ${field('Notas',`<input id="te-notas" name="notas" placeholder="Condiciones, material, sensaciones…">`)}
+    <p class="form-err"></p>
+    <div class="form-actions"><button type="submit" class="btn primary">Guardar test</button></div>
+  </form>`};
+function syncTestField(){const t=$('#te-tipo');if(!t)return;const T=TESTS[t.value];
+  $('#te-vlabel').textContent='Resultado'+(T.u?' ('+T.u+')':' (tiempo)');$('#te-vhint').textContent=T.hint||'';
+  $('#te-valor').placeholder=T.kind==='time'?(t.value==='sp200'?'38.2':'7:45.3'):(t.value==='ftp'?'265':t.value==='vo2'?'58':'7400')}
+
+/* --- sesión: detalle, duración y tareas --- */
+SH.sesion=function(id){const s=ses(id)||{};const d=depById(s.aid)||{};
+  const defTipo=d.deporte==='ciclismo'&&lastTest(d,'ftp')?'potencia':'distancia';
+  return `<div id="sheet-live" style="display:grid;gap:20px"></div>
+  <form data-form="duracion" class="subform" id="dur-form" hidden novalidate><input type="hidden" name="sid" value="${esc(id)}">
+    <h3>Duración de la sesión</h3>
+    ${field('Duración total (min)',`<input id="du-min" name="duracion" type="number" min="1" max="900" inputmode="numeric">`,'<span id="du-hint"></span>')}
+    <div class="form-actions"><button type="button" class="btn ghost" data-action="dur-cancel">Cancelar</button><button type="button" class="btn" data-action="dur-auto" data-id="${esc(id)}">Volver al cálculo automático</button><button type="submit" class="btn primary">Fijar duración</button></div></form>
+  ${!isCoach?realForm(s,d):''}
+  <form data-form="tarea" class="subform" id="tarea-form" novalidate ${s.id&&!ownSes(s)?'hidden':''}>
+    <input type="hidden" name="id" id="ta-id"><input type="hidden" name="sid" value="${esc(id)}">
+    <h3 id="ta-title">Añadir tarea</h3>
+    <div class="grid2">${field('Orden',`<input id="ta-orden" name="orden" type="number" min="1" inputmode="numeric" value="${(s.tareas||[]).length+1}">`)}
+      ${field('Tipo de tarea',`<select id="ta-tipo" name="tipo">${Object.keys(TASKS).map(k=>opt(k,k==='compuesta'?'Compuesta (varias partes)':TASKS[k],k===defTipo)).join('')}</select>`)}</div>
+    <div id="ta-simple" style="display:grid;gap:14px">
+      <div class="grid2" id="ta-valor">${valorFields(defTipo,d.deporte)}</div>
+      <div class="grid2">${field('Zona de entrenamiento (% de esfuerzo)',`<input id="ta-pct" name="esfuerzo" type="number" min="1" max="200" step="any" inputmode="decimal" placeholder="85">`)}
+        ${field('Duración por serie (min)',`<input id="ta-dur" name="duracion" type="number" min="0" step="any" inputmode="decimal">`,'<span id="ta-dur-hint"></span>')}</div>
+      <p class="muted" id="ta-obj" style="font-size:13.5px"></p>
+    </div>
+    <div id="ta-comp" style="display:grid;gap:8px" hidden>
+      <span class="eyebrow">Partes de cada serie, en orden</span>
+      <div class="part-head" aria-hidden="true"><span>Tipo</span><span>Valor</span><span>Unidad</span><span>% esf.</span><span>Min</span><span></span></div>
+      <div id="ta-parts" style="display:grid;gap:8px"></div>
+      <div class="actions-row"><button type="button" class="btn small" data-action="add-part">+ Añadir parte</button><span class="muted" id="ta-comp-sum" style="font-size:13.5px"></span></div>
+    </div>
+    <div class="grid2">${field('Series',`<input id="ta-series" name="series" type="number" min="1" inputmode="numeric" value="1">`)}
+      ${field('Descanso',`<input id="ta-desc" name="descanso" class="mono" placeholder="2:00" inputmode="decimal">`,'mm:ss entre series')}</div>
+    <p class="muted" style="font-size:13px">Pon el % de esfuerzo y la aplicación elige sola el test de referencia según el tipo de tarea y su distancia o duración.</p>
+    <p class="form-err"></p>
+    <div class="form-actions"><button type="button" class="btn ghost" id="ta-cancel" data-action="cancel-tarea" hidden>Cancelar edición</button><button type="submit" class="btn primary" id="ta-submit">Añadir tarea</button></div>
+  </form>`};
+function valorFields(tipo,sport,t){t=t||{};
+  const unitSel=(opts,cur)=>`<select id="ta-unidad" name="unidad">${opts.map(o=>opt(o,o,o===cur)).join('')}</select>`;
+  if(tipo==='distancia')return field('Distancia',`<input id="ta-v" name="valor" type="number" min="0" step="any" inputmode="decimal" value="${esc(t.distancia??'')}" placeholder="1000">`)+field('Unidad',unitSel(['m','km'],t.unidad||'m'));
+  if(tipo==='potencia')return field('Potencia (W)',`<input id="ta-v" name="valor" type="number" min="0" step="any" inputmode="decimal" value="${esc(t.potencia??'')}" placeholder="280">`,'Vacío = se calcula con el %');
+  if(tipo==='tiempo')return field('Tiempo por serie',`<input id="ta-v" name="valor" class="mono" value="${t.tiempo!=null?fmtTime(t.tiempo):''}" placeholder="4:00">`,'mm:ss o h:mm:ss');
+  if(tipo==='ritmo'){const def=sport==='ciclismo'?'km/h':'/km';const u=t.unidad==='/500 m'?'/km':(t.unidad||def);
+    return field('Ritmo',`<input id="ta-v" name="valor" class="mono" value="${esc(t.ritmo??'')}" placeholder="${u==='km/h'?'32':'4:10'}">`,'min/km (mm:ss) o km/h · vacío = se calcula con el %')+field('Unidad',unitSel(['/km','km/h'],u))}
+  if(tipo==='frecuencia'){const def=sport==='piraguismo'?'pal/min':sport==='ciclismo'?'rpm':'pasos/min';
+    return field('Frecuencia',`<input id="ta-v" name="valor" type="number" min="0" step="any" inputmode="decimal" value="${esc(t.frecuencia??'')}" placeholder="90">`)+field('Unidad',unitSel(['rpm','pal/min','pasos/min','ppm'],t.unidad||def))}
+  return '';
+}
+
+/* --- partes de una tarea compuesta --- */
+const PART_UNITS={distancia:['m','km'],ritmo:['/km','km/h'],frecuencia:['rpm','pal/min','pasos/min','ppm']};
+let partSeq=0;
+function partInputs(i,tipo,sport,p){p=p||{};
+  const units=PART_UNITS[tipo];
+  const defU=tipo==='ritmo'?(sport==='ciclismo'?'km/h':'/km'):tipo==='frecuencia'?(sport==='piraguismo'?'pal/min':sport==='ciclismo'?'rpm':'pasos/min'):'m';
+  const cur=p.unidad==='/500 m'?'/km':(p.unidad||defU);
+  const val=p[tipo]!=null?(tipo==='tiempo'?fmtTime(p[tipo]):p[tipo]):'';
+  const ph={distancia:'1000',potencia:'vatios',tiempo:'mm:ss',ritmo:cur==='km/h'?'km/h':'mm:ss',frecuencia:'90'}[tipo];
+  return `<span class="p-vals"><input id="pt-v-${i}" class="p-v mono" inputmode="decimal" placeholder="${ph}" aria-label="${TASKS[tipo]}" value="${esc(val)}">${units?`<select id="pt-u-${i}" class="p-u" aria-label="Unidad">${units.map(u=>opt(u,u,u===cur)).join('')}</select>`:`<span class="p-u-none">${tipo==='potencia'?'W':'—'}</span>`}</span>`}
+function partRow(p,sport){p=p||{};const i=++partSeq;const tipo=p.tipo||'distancia';
+  return `<div class="part" data-part="${i}"><div class="part-grid">
+    <select id="pt-tipo-${i}" class="p-tipo" aria-label="Tipo de parte">${Object.keys(TASKS).filter(k=>k!=='compuesta').map(k=>opt(k,TASKS[k],k===tipo)).join('')}</select>
+    ${partInputs(i,tipo,sport,p)}
+    <input id="pt-pct-${i}" class="p-pct" type="number" min="1" max="200" step="any" inputmode="decimal" placeholder="%" aria-label="% de esfuerzo" value="${esc(p.esfuerzo??'')}">
+    <input id="pt-dur-${i}" class="p-dur" type="number" min="0" step="any" inputmode="decimal" placeholder="min" aria-label="Duración en minutos" value="${esc(p.duracionEstimada?'':(p.duracion??''))}">
+    <button type="button" class="btn small ghost danger" data-action="del-part" aria-label="Quitar parte">✕</button>
+  </div><small class="p-hint"></small></div>`}
+function readPart(row){const q=c=>row.querySelector(c);return {tipo:q('.p-tipo').value,valor:q('.p-v').value,unidad:q('.p-u')?q('.p-u').value:'',pct:num(q('.p-pct').value),dur:num(q('.p-dur').value)}}
+function curDep(){const s=ses(sheet&&sheet.arg)||{};return depById(s.aid)||{}}
+function setTaskMode(tipo){const comp=tipo==='compuesta';$('#ta-simple').hidden=comp;$('#ta-comp').hidden=!comp;
+  if(comp&&!$('#ta-parts').children.length){const sp=curDep().deporte;$('#ta-parts').insertAdjacentHTML('beforeend',partRow({tipo:'distancia'},sp)+partRow({tipo:'tiempo'},sp))}
+  taHint()}
+
+function fmtTarea(t){
+  if(t.tipo==='compuesta')return (t.partes||[]).map(p=>TASKS[p.tipo]+' '+fmtTarea(p)).join(' + ');
+  if(t.tipo==='distancia')return nf.format(t.distancia)+' '+(t.unidad||'m');
+  if(t.tipo==='potencia')return nf.format(t.potencia)+' W';
+  if(t.tipo==='tiempo')return fmtTime(t.tiempo);
+  if(t.tipo==='ritmo')return (t.ritmo||'')+(t.unidad==='km/h'?' km/h':' '+(t.unidad||'/km'));
+  if(t.tipo==='frecuencia')return nf.format(t.frecuencia)+' '+(t.unidad||'');
+  return '';
+}
+function intensHow(t){
+  if(t.esfuerzo)return pctBadge(t.esfuerzo)+(t.objetivo?`<span>${esc(t.objetivo)}${t.referencia&&TESTS[t.referencia.tipo]?' · '+TESTS[t.referencia.tipo].n:''}</span>`:'');
+  return t.zona?`<span class="badge">${esc(t.zona)}</span>`:'';
+}
+function realLine(rt,plan,d){if(!rt)return '';const p=plan&&rt.duracion!=null?Math.round(100*rt.duracion/plan):null;
+  const est={completada:'Completada',parcial:'Parcial',no:'No realizada'}[rt.estado]||'Realizada';
+  const bits=[rt.duracion!=null&&rt.estado!=='no'?`${nf.format(rt.duracion)}${plan?' de '+nf.format(Math.round(plan*10)/10):''} min`:'',rt.distancia?fmtDist(rt.distancia):'',rt.ritmo?esc(rt.ritmo)+(d.deporte==='ciclismo'?' km/h':' /km'):'',rt.potencia?nf.format(rt.potencia)+' W':'',rt.fc?esc(rt.fc)+' ppm':''].filter(Boolean);
+  return `<div class="real"><span class="eyebrow">Hecho</span><span class="zb ${rt.estado==='no'?'cb-bad':(cumplCls(p)||'cb-ok')}">${est}${p!=null&&rt.estado!=='no'?' · '+p+' %':''}</span>${bits.length?`<span>${bits.join(' · ')}</span>`:''}${rt.comentario?`<span class="rc">«${esc(rt.comentario)}»</span>`:''}</div>`}
+function realForm(s,d){const ts=tareasOf(s);const r=s.realizado||{};const rt=r.tareas||{};const bike=d.deporte==='ciclismo';
+  const extra=(pre,x)=>`${field(bike?'Velocidad media (km/h)':'Ritmo medio (min/km)',`<input id="${pre}-ritmo" name="${pre}-ritmo" class="mono" inputmode="decimal" placeholder="${bike?'32':'5:10'}" value="${esc(x.ritmo||'')}">`)}
+    ${bike?field('Potencia media (W)',`<input id="${pre}-pot" name="${pre}-pot" type="number" min="0" inputmode="numeric" value="${esc(x.potencia??'')}">`):''}
+    ${field('FC media (ppm)',`<input id="${pre}-fc" name="${pre}-fc" type="number" min="30" max="230" inputmode="numeric" value="${esc(x.fc??'')}">`)}
+    ${field('Distancia (m)',`<input id="${pre}-dist" name="${pre}-dist" type="number" min="0" step="any" inputmode="decimal" value="${esc(x.distancia??'')}">`)}`;
+  const rpe0=r.rpe||s.rpe||5;
+  return `<form data-form="real" class="subform real-form" id="real-form" novalidate><input type="hidden" name="sid" value="${esc(s.id)}">
+    <div><h3>Lo que he hecho</h3><p class="muted" style="font-size:13.5px;margin-top:2px">${s.realizado?'Ya lo registraste. Puedes corregirlo si hace falta.':'Al terminar, apunta lo que hiciste de verdad. Tu entrenador verá la comparación con lo planificado.'}</p></div>
+    ${ts.length?ts.map(t=>{const x=rt[t.id]||{};const plan=totalTarea(t);const pre='re-'+t.id;const planTxt=plan!=null?nf.format(Math.round(plan*10)/10):'';
+      return `<div class="real-task"><div class="real-plan"><span class="o">${esc(t.orden)}</span><div style="min-width:0"><strong>${+t.series>1?esc(t.series)+' × ':''}${t.tipo==='compuesta'?'Compuesta: ':esc(TASKS[t.tipo])+' '}${esc(fmtTarea(t))}</strong>
+        <div class="muted mono" style="font-size:12.5px">${[t.esfuerzo?nf.format(t.esfuerzo)+' %'+(t.objetivo?' · '+esc(t.objetivo):''):'',plan!=null?'previsto '+planTxt+' min':''].filter(Boolean).join(' · ')}</div></div></div>
+        <div class="grid2">${field('Estado',`<select id="${pre}-estado" name="${pre}-estado">${opt('completada','Completada',(x.estado||'completada')==='completada')}${opt('parcial','Parcial',x.estado==='parcial')}${opt('no','No realizada',x.estado==='no')}</select>`)}
+          ${field('Minutos reales',`<input id="${pre}-dur" name="${pre}-dur" class="re-dur" data-plan="${plan??''}" type="number" min="0" step="any" inputmode="decimal" placeholder="${planTxt}" value="${esc(x.duracion??'')}">`,plan!=null?'Vacío y completada = lo previsto':'')}
+          ${extra(pre,x)}</div>
+        ${field('Comentario',`<input id="${pre}-com" name="${pre}-com" value="${esc(x.comentario||'')}" placeholder="Cómo fue, por qué paraste…">`)}</div>`}).join('')
+    :`<div class="grid2">${field('Minutos reales',`<input id="re-ses-dur" name="re-ses-dur" type="number" min="0" step="any" inputmode="decimal" placeholder="${esc(s.duracion||'')}" value="${esc(r.duracion??'')}">`,s.duracion?'Previsto: '+fmtMin(s.duracion):'')}${extra('re-ses',r)}</div>`}
+    ${field('RPE real de la sesión',`<div style="display:flex;gap:12px;align-items:center"><input id="re-rpe" name="re-rpe" type="range" min="1" max="10" step="1" value="${esc(rpe0)}"><output id="re-rpe-out" class="rpe" style="background:${rpeColor(rpe0)};min-width:150px;text-align:center">${rpe0} · ${RPE[rpe0]}</output></div>`,'Esfuerzo que sentiste en toda la sesión.')}
+    ${field('Comentario general',`<textarea id="re-com" name="re-com" placeholder="Sensaciones, molestias, condiciones…">${esc(r.comentario||'')}</textarea>`)}
+    <p class="form-err"></p>
+    <div class="form-actions"><button type="submit" class="btn primary">${s.realizado?'Guardar cambios':'Guardar lo realizado'}</button></div></form>`}
+LIVE.sesion=function(id){const s=ses(id);if(!s)return `<p class="muted">Esta sesión ya no existe o aún se está cargando.</p>`;
+  const d=depById(s.aid)||{};const e=ent(s.dniEntrenador);const ts=tareasOf(s);const auto=s.duracionAuto!==false;
+  const calc=totalTareas(ts),miss=sinDuracion(ts);const r=s.realizado;const pc=cumpl(s);const own=ownSes(s);
+  return `<div class="sec"><span class="eyebrow">${esc(fmtDay(s.fecha))} · ${esc(s.hora||'')}</span>
+    <h2>${esc(s.objetivo||'Sesión')}</h2>
+    <div class="actions-row">${chip(d.deporte)}${isCoach?`<button class="btn small ghost" data-action="open-deportista" data-id="${esc(d.id||'')}">${esc(d.nombre||'Deportista')}</button>`:''}<span class="muted" style="font-size:13.5px">Diseñada por ${esc(e?e.nombre:(s.nombreEntrenador||'—'))}</span></div>
+    <dl class="kv"><div><dt>Previsto · ${auto?'automático':'manual'}</dt><dd>${fmtMin(s.duracion)}</dd></div><div><dt>RPE previsto</dt><dd>${esc(s.rpe||'—')} <span class="muted" style="font-size:12px">${esc(RPE[s.rpe]||'')}</span></dd></div>
+      ${r?`<div class="kv-real"><dt>Realizado</dt><dd>${r.duracion!=null?fmtMin(r.duracion):'—'} ${pc!=null?`<span class="zb ${cumplCls(pc)}">${pc} %</span>`:''}</dd></div><div class="kv-real"><dt>RPE real</dt><dd>${esc(r.rpe||'—')} <span class="muted" style="font-size:12px">${esc(RPE[r.rpe]||'')}</span></dd></div>`:''}
+      <div><dt>Carga sRPE${r?' real':''}</dt><dd>${n0.format(carga(s))} UA</dd></div></dl>
+    ${r&&!ts.length?realLine(Object.assign({},r,{estado:pc===0?'no':pc!=null&&pc<90?'parcial':'completada',comentario:''}),+s.duracion||null,d):''}
+    ${r&&r.comentario?`<p class="real-com">«${esc(r.comentario)}»</p>`:''}
+    ${!r&&isCoach?`<p class="muted" style="font-size:13.5px">${s.fecha&&s.fecha<todayISO()?'<span class="hint-warn">El deportista aún no ha registrado lo que hizo.</span>':'Pendiente de que el deportista registre lo que hizo.'}</p>`:''}
+    ${!auto&&ts.length&&Math.round(calc)!==Math.round(+s.duracion||0)?`<p class="muted" style="font-size:13.5px">La suma de las tareas da ${fmtMin(calc)}.</p>`:''}
+    ${own?`<div class="actions-row"><button class="btn small" data-action="edit-sesion" data-id="${esc(id)}">Editar sesión</button><button class="btn small" data-action="dur-edit" data-id="${esc(id)}">Editar duración</button><button class="btn small danger" data-action="del" data-kind="sesion" data-id="${esc(id)}" data-warn="${ts.length?`Pulsa otra vez: se borran también ${ts.length} tareas`:'Pulsa otra vez para eliminar'}">Eliminar sesión</button></div>`:''}</div>
+  <div class="sec"><div class="card-head" style="margin:0"><h3>Tareas</h3><span class="eyebrow">${ts.length} ${ts.length===1?'tarea':'tareas'}</span></div>
+    ${ts.length?`<div>${ts.map(t=>{const tot=totalTarea(t);const comp=t.tipo==='compuesta';const n=+t.series||1;
+      const durTxt=minSerie(t)!=null?`<span>${t.duracionEstimada?'≈ ':''}${nf.format(minSerie(t))} min/serie</span>`:'<span class="hint-warn">Sin duración</span>';
+      const rt=r&&r.tareas&&r.tareas[t.id];
+      return `<div class="task"><span class="o">${esc(t.orden)}</span><div style="min-width:0">
+        <div class="what">${n>1?esc(n)+' × ':''}${comp?`Tarea compuesta <span class="muted" style="font-weight:400">· ${(t.partes||[]).length} partes</span>`:esc(TASKS[t.tipo]||t.tipo)+' '+esc(fmtTarea(t))}</div>
+        ${comp?`<ol class="parts">${(t.partes||[]).map(p=>`<li><span class="pw">${esc(TASKS[p.tipo])} ${esc(fmtTarea(p))}</span>${intensHow(p)}${minSerie(p)!=null?`<span>${p.duracionEstimada?'≈ ':''}${nf.format(minSerie(p))} min</span>`:'<span class="hint-warn">sin duración</span>'}</li>`).join('')}</ol>`:''}
+        <div class="how">${comp?'':intensHow(t)}${durTxt}${t.descanso?`<span>desc. ${fmtTime(t.descanso)}</span>`:''}${tot!=null?`<span>total ${nf.format(tot)} min</span>`:''}</div>${realLine(rt,tot,d)}</div>
+        <div class="acts">${own?`<button class="btn small ghost" data-action="edit-tarea" data-id="${esc(t.id)}">Editar</button><button class="btn small ghost danger" data-action="del" data-kind="tarea" data-sid="${esc(id)}" data-id="${esc(t.id)}" aria-label="Eliminar tarea">✕</button>`:''}</div></div>`}).join('')}</div>
+      <div class="tot-line"><span>Suma de tareas</span><span>${fmtMin(calc)}${miss?` · <span class="hint-warn">${miss} sin duración completa</span>`:''}</span></div>`
+    :`<p class="muted">Esta sesión aún no tiene tareas. Añade la primera con el formulario de abajo; la duración de la sesión se irá sumando sola.</p>`}</div>`};
+
+/* --- ficha del deportista --- */
+function fichaHTML(d){if(!d)return `<p class="muted">Este deportista ya no existe.</p>`;
+  const e=ent(d.dniEntrenador);const ss=sortSes(S.sesiones.filter(s=>s.aid===d.id));const nt=(d.tests||[]).length;const a=age(d.fechaNacimiento);
+  const parts=[ss.length?ss.length+' sesiones':'',nt?nt+' tests':''].filter(Boolean);
+  return `<div class="sec"><div class="head-row">${avatar(d,'lg')}<div><span class="eyebrow mono">DNI ${esc(d.dni)}</span><h2 style="text-transform:none">${esc(d.nombre)}</h2><div class="actions-row" style="margin-top:4px">${chip(d.deporte)}${isCoach&&!d.cuenta?'<span class="badge warn">Sin cuenta</span>':''}</div></div></div>
+    <dl class="kv"><div><dt>Edad</dt><dd>${a!=null?a+' años':'—'}</dd></div><div><dt>Nacimiento</dt><dd>${esc(fmtDate(d.fechaNacimiento))}</dd></div><div><dt>FC máx · reposo</dt><dd>${esc(d.fcMax||'—')} · ${esc(d.fcReposo||'—')}</dd></div><div><dt>Entrenador</dt><dd style="font-family:var(--f-body)">${esc(e?e.nombre:'—')}</dd></div></dl>
+    ${d.objetivos?`<div><span class="eyebrow">Objetivos</span><p style="margin-top:4px;max-width:62ch">${esc(d.objetivos)}</p></div>`:''}
+    ${isCoach&&!d.cuenta?`<div class="subform" style="display:grid;gap:8px"><span class="eyebrow">Código de vinculación</span><div class="actions-row"><span class="code">${esc(d.codigo||'—')}</span><button class="btn small ghost" data-action="new-code" data-id="${esc(d.id)}">Generar otro</button></div><p class="muted" style="font-size:13.5px">Dáselo a ${esc((d.nombre||'').split(' ')[0])}: al abrir la aplicación con su cuenta lo introduce y, cuando lo confirmes, verá solo sus datos.</p></div>`:''}
+    <div class="actions-row"><button class="btn small primary" data-action="new-sesion" data-aid="${esc(d.id)}">Nueva sesión</button><button class="btn small" data-action="new-test" data-aid="${esc(d.id)}">Registrar test</button><button class="btn small" data-action="edit-deportista" data-id="${esc(d.id)}">Editar</button>${realCoach&&!viewAs?`<button class="btn small" data-action="view-as" data-id="${esc(d.id)}">Ver como deportista</button>`:''}
+      ${isCoach?`<button class="btn small danger" data-action="del" data-kind="deportista" data-id="${esc(d.id)}" data-warn="${parts.length?'Pulsa otra vez: se borran '+parts.join(' y '):'Pulsa otra vez para eliminar'}">Eliminar</button>`:''}</div></div>
+  <div class="sec"><h3>Tests de referencia (100 %)</h3>
+    ${nt?refsTable(d,100)+`<small class="muted">Último resultado de cada test y su equivalencia al 100 %. El % de esfuerzo de cada tarea se calcula sobre estos valores.</small>`:`<p class="muted">${refsNeeded()}</p>`}</div>
+  <div class="sec"><div class="card-head" style="margin:0"><h3>Sesiones</h3><span class="eyebrow">${ss.length} · ${n0.format(ss.reduce((a,s)=>a+carga(s),0))} UA</span></div>
+    ${ss.length?`<div class="rows">${ss.slice(0,8).map(sesRow).join('')}</div>`:`<p class="muted">Todavía no ha realizado ninguna sesión.</p>`}</div>`}
+SH.deportista_ver=function(){return `<div id="sheet-live" style="display:grid;gap:20px"></div>`};
+LIVE.deportista_ver=id=>fichaHTML(depById(id));
+
+function openSheet(kind,arg){sheet={kind,arg};const body=$('#sheet-body');body.innerHTML=SH[kind](arg);$('#sheet').hidden=false;$('#sheet-panel').scrollTop=0;
+  renderLive();if(kind==='test')syncTestField();if(kind==='deportista')fcHint();if(kind==='sesion')taHint();
+  const f=body.querySelector('input:not([type=hidden]):not([readonly]):not([type=file]):not([type=checkbox]),select');if(f&&kind!=='sesion'&&kind!=='deportista_ver')setTimeout(()=>f.focus({preventScroll:true}),30)}
+function closeSheet(){sheet=null;$('#sheet').hidden=true;$('#sheet-body').innerHTML=''}
+function renderLive(){if(!sheet||!LIVE[sheet.kind])return;const el=$('#sheet-live');if(el)el.innerHTML=LIVE[sheet.kind](sheet.arg)}
+
+/* ================= Render ================= */
+function renderNav(){
+  const items=isCoach?[['panel','Panel'],['sesiones','Sesiones'],['deportistas','Deportistas'],['tests','Tests'],['entrenadores','Entrenadores']]
+    :[['panel','Panel'],['sesiones','Mis sesiones'],['tests','Mis tests'],['deportistas','Mi ficha']];
+  const html=items.map(([k,l])=>`<a href="#${k}" ${k===view?'aria-current="page"':''}>${l}</a>`).join('');
+  const t=$('#tabs');if(t.innerHTML!==html)t.innerHTML=html;
+}
+function render(){
+  if(!isCoach&&view==='entrenadores')view='panel';
+  const m=$('#main');
+  if(!store||!ready.entrenadores||!ready.atletas){m.innerHTML='<div class="loading">Cargando registro…</div>';return}
+  if(!isCoach&&!S.deportistas.length){$('#tabs').innerHTML='';m.innerHTML=welcomeHTML();return}
+  renderNav();
+  const banner=viewAs?`<div class="notice preview"><span>Estás viendo la aplicación como la ve <strong>${esc((S.deportistas[0]||{}).nombre||'')}</strong>: solo sus datos, sin el resto del grupo ni la pestaña de entrenadores.</span><button class="btn small primary" data-action="exit-view-as">Volver a la vista de entrenador</button></div>`:'';
+  m.innerHTML=banner+R[view]();renderLive();
+}
+function currentView(){const h=location.hash.slice(1);return VIEWS.includes(h)?h:'panel'}
+window.addEventListener('hashchange',()=>{view=currentView();render();window.scrollTo(0,0)});
+
+/* ================= Guardar ================= */
+function formErr(f,msg){const p=f.querySelector('.form-err');if(p)p.textContent=msg;return false}
+async function saveTareas(s,tareas){
+  const upd={tareas:tareas.map(t=>Object.assign({},t))};
+  if(s.duracionAuto!==false)upd.duracion=Math.round(totalTareas(tareas));
+  await W('update',pSes(s.aid,s.id),upd);
+}
+const SUBMIT={
+  async entrenador(f,fd){const id=fd.get('id');const dni=normDni(fd.get('dni'));const nombre=String(fd.get('nombre')).trim();
+    if(!nombre)return formErr(f,'Escribe el nombre del entrenador.');if(!dni)return formErr(f,'Escribe el DNI del entrenador.');
+    if(!id&&S.entrenadores.some(e=>e.dni===dni))return formErr(f,'Ya hay un entrenador con ese DNI.');
+    await W('set','entrenadores/'+(id||uid()),{dni,nombre,correo:String(fd.get('correo')).trim(),especialidad:String(fd.get('especialidad')).trim()});
+    toast(dniOk(dni)?'Entrenador guardado':'Entrenador guardado. Revisa el DNI: la letra no coincide.');closeSheet()},
+  async deportista(f,fd){const id=fd.get('id'),link=fd.get('link');const dni=normDni(fd.get('dni'));const nombre=String(fd.get('nombre')).trim();
+    if(!nombre)return formErr(f,'Escribe el nombre del deportista.');if(!dni)return formErr(f,'Escribe el DNI del deportista.');
+    if(!id&&isCoach&&S.deportistas.some(d=>d.dni===dni))return formErr(f,'Ya hay un deportista con ese DNI.');
+    const fcMax=num(fd.get('fcMax')),fcReposo=num(fd.get('fcReposo'));if(fcMax&&fcReposo&&fcReposo>=fcMax)return formErr(f,'La FC en reposo tiene que ser menor que la FC máxima.');
+    const base={dni,nombre,foto:fd.get('foto')||'',fechaNacimiento:fd.get('fechaNacimiento')||'',deporte:fd.get('deporte'),objetivos:String(fd.get('objetivos')).trim(),fcMax,fcReposo,dniEntrenador:fd.get('dniEntrenador')||''};
+    let nid=id;
+    if(id)await W('update',pAt(id),base);
+    else if(!isCoach){nid=myId;await W('set',pAt(myId),Object.assign(base,{cuenta:true,pendiente:false,codigo:'',tests:[]}))}
+    else if(link){nid=link;await W('set',pAt(link),Object.assign(base,{cuenta:true,pendiente:false,codigo:'',tests:[]}))}
+    else{nid='sc-'+uid();await W('set',pAt(nid),Object.assign(base,{cuenta:false,pendiente:false,codigo:genCode(),tests:[]}))}
+    toast(dniOk(dni)?'Ficha guardada':'Ficha guardada. Revisa el DNI: la letra no coincide.');
+    if(isCoach)openSheet('deportista_ver',nid);else closeSheet()},
+  async sesion(f,fd){const id=fd.get('id');const aid=fd.get('aid');const d=depById(aid);if(!d)return formErr(f,'Elige el deportista que realiza la sesión.');
+    if(!fd.get('fecha')||!fd.get('hora'))return formErr(f,'Indica la fecha y la hora.');
+    const auto=!!fd.get('auto');const old=id?ses(id):null;
+    let duracion;if(auto)duracion=Math.round(totalTareas(tareasOf(old)));else{duracion=num(fd.get('duracion'));if(!duracion||duracion<=0)return formErr(f,'Indica la duración en minutos o marca el cálculo automático.')}
+    const de=fd.get('dniEntrenador')||'';const e=ent(de);
+    const data={dni:d.dni,dniEntrenador:de,nombreEntrenador:e?e.nombre:'',fecha:fd.get('fecha'),hora:fd.get('hora'),duracion,duracionAuto:auto,objetivo:String(fd.get('objetivo')).trim(),rpe:+fd.get('rpe')};
+    const sid=id||uid();
+    if(id)data.tareas=tareasOf(old).map(t=>Object.assign({},t,{fecha:data.fecha,hora:data.hora}));else data.tareas=[];
+    if(id&&old){if(old.realizado)data.realizado=old.realizado;data.creadaPor=old.creadaPor||'entrenador'}else data.creadaPor=realCoach&&!viewAs?'entrenador':'deportista';
+    await W('set',pSes(aid,sid),data);
+    toast(id?'Sesión actualizada':'Sesión creada');openSheet('sesion',sid)},
+  async real(f,fd){const s=ses(fd.get('sid'));if(!s)return formErr(f,'La sesión ya no existe.');const d=depById(s.aid)||{};const bike=d.deporte==='ciclismo';const ts=tareasOf(s);
+    const g=(p,k)=>fd.get(p+'-'+k);
+    const extras=(p,label)=>{const rv=String(g(p,'ritmo')||'').trim();let ritmo=null;
+      if(rv){if(bike){const n=num(rv);if(n==null||n<=0)throw label+'la velocidad media (en km/h).';ritmo=String(n).replace('.',',')}else{if(parseTime(rv)==null)throw label+'el ritmo como mm:ss, por ejemplo 5:10.';ritmo=rv}}
+      return {ritmo,potencia:bike?num(g(p,'pot')):null,fc:num(g(p,'fc')),distancia:num(g(p,'dist'))}};
+    const R2={rpe:+fd.get('re-rpe')||null,comentario:String(fd.get('re-com')||'').trim(),guardado:new Date().toISOString(),tareas:{}};
+    try{
+      if(ts.length){let total=0,any=false;
+        for(const t of ts){const p='re-'+t.id;const estado=g(p,'estado')||'completada';let dur=num(g(p,'dur'));const plan=totalTarea(t);
+          if(dur==null){if(estado==='completada')dur=plan!=null?Math.round(plan*10)/10:null;else if(estado==='no')dur=0;else throw `Tarea ${t.orden}: indica cuántos minutos hiciste.`}
+          if(estado==='no')dur=0;
+          if(dur!=null){total+=dur;any=true}
+          R2.tareas[t.id]=Object.assign({estado,duracion:dur,comentario:String(g(p,'com')||'').trim()},extras(p,`Tarea ${t.orden}: revisa `))}
+        R2.duracion=any?Math.round(total*10)/10:null;
+      }else{const dur=num(fd.get('re-ses-dur'));if(dur==null)throw 'Indica cuántos minutos entrenaste.';Object.assign(R2,{duracion:dur},extras('re-ses','Revisa '))}
+    }catch(msg){if(typeof msg==='string')return formErr(f,msg);throw msg}
+    await W('update',pSes(s.aid,s.id),{realizado:R2});
+    const pc=cumpl(Object.assign({},s,{realizado:R2}));toast(pc!=null?'Entrenamiento registrado: '+pc+' % de lo previsto':'Entrenamiento registrado');
+    const btn=f.querySelector('[type=submit]');if(btn)btn.textContent='Guardar cambios'},
+  async duracion(f,fd){const s=ses(fd.get('sid'));if(!s)return;const v=num(fd.get('duracion'));if(!v||v<=0)return formErr(f,'Escribe la duración en minutos.');
+    await W('update',pSes(s.aid,s.id),{duracion:Math.round(v),duracionAuto:false});$('#dur-form').hidden=true;toast('Duración fijada a mano')},
+  async test(f,fd){const tipo=fd.get('tipo'),T=TESTS[tipo];const d=depById(fd.get('aid'));if(!d)return formErr(f,'Elige un deportista.');
+    const valor=T.kind==='time'?parseTime(fd.get('valor')):num(fd.get('valor'));
+    if(valor==null||valor<=0)return formErr(f,T.kind==='time'?'Escribe el tiempo como mm:ss.d, por ejemplo 7:45.3.':'Escribe un número válido.');
+    const tests=(d.tests||[]).map(t=>Object.assign({},t));tests.push({id:uid(),tipo,fecha:fd.get('fecha')||todayISO(),valor,notas:String(fd.get('notas')).trim()});
+    await W('update',pAt(d.id),{tests});testDep=d.id;
+    toast('Test guardado');closeSheet()},
+  async tarea(f,fd){const s=ses(fd.get('sid'));if(!s)return formErr(f,'La sesión ya no existe.');const d=depById(s.aid)||{};
+    const tipo=fd.get('tipo');
+    const desc=String(fd.get('descanso')||'').trim();const descanso=desc?parseTime(desc):null;if(desc&&descanso==null)return formErr(f,'Escribe el descanso como mm:ss, por ejemplo 2:00.');
+    const id=fd.get('id')||uid();
+    const base={id,fecha:s.fecha,hora:s.hora,orden:num(fd.get('orden'))||(s.tareas||[]).length+1,series:Math.max(1,num(fd.get('series'))||1),descanso};
+    let t;
+    if(tipo==='compuesta'){
+      const raws=[...document.querySelectorAll('#ta-parts .part')].map(readPart).filter(r=>String(r.valor||'').trim()||r.pct!=null||r.dur!=null);
+      if(raws.length<2)return formErr(f,'Una tarea compuesta necesita al menos dos partes con datos.');
+      const partes=[];
+      for(let i=0;i<raws.length;i++){const e=evalTask(raws[i],d);if(e.err)return formErr(f,'Parte '+(i+1)+': '+e.err);partes.push(toPart(e))}
+      const known=partes.filter(p=>minSerie(p)!=null);
+      t=Object.assign(base,{tipo:'compuesta',partes,duracion:known.length?Math.round(known.reduce((a,p)=>a+(+p.duracion),0)*10)/10:null,duracionEstimada:partes.some(p=>p.duracionEstimada)});
+    }else{
+      const e=evalTask({tipo,valor:fd.get('valor'),unidad:fd.get('unidad'),pct:num(fd.get('esfuerzo')),dur:num(fd.get('duracion'))},d);
+      if(e.err)return formErr(f,e.err);
+      t=Object.assign(base,toPart(e));
+    }
+    const list=tareasOf(s).filter(x=>x.id!==id);list.push(t);
+    await saveTareas(s,list);
+    const noDur=minSerie(t)==null;
+    toast(fd.get('id')?'Tarea actualizada':(noDur?'Tarea añadida sin duración: indícala para que cuente en la sesión.':'Tarea añadida'),noDur);resetTareaForm()}
+};
+function resetTareaForm(){const f=$('#tarea-form');if(!f||!sheet)return;const s=ses(sheet.arg)||{};const d=depById(s.aid)||{};
+  $('#ta-id').value='';$('#ta-title').textContent='Añadir tarea';$('#ta-submit').textContent='Añadir tarea';$('#ta-cancel').hidden=true;
+  const tipo=$('#ta-tipo').value;if(tipo!=='compuesta')$('#ta-valor').innerHTML=valorFields(tipo,d.deporte);
+  $('#ta-parts').innerHTML='';
+  $('#ta-orden').value=(s.tareas||[]).length+1;$('#ta-series').value=1;$('#ta-dur').value='';$('#ta-desc').value='';$('#ta-pct').value='';f.querySelector('.form-err').textContent='';
+  setTaskMode(tipo)}
+function loadTarea(tid){if(!sheet)return;const s=ses(sheet.arg);const t=s&&(s.tareas||[]).find(x=>x.id===tid);if(!t)return;const d=depById(s.aid)||{};
+  $('#ta-id').value=t.id;$('#ta-orden').value=t.orden||'';$('#ta-tipo').value=t.tipo;
+  $('#ta-series').value=t.series||1;$('#ta-desc').value=t.descanso?fmtTime(t.descanso):'';
+  $('#ta-parts').innerHTML='';
+  if(t.tipo==='compuesta'){$('#ta-parts').innerHTML=(t.partes||[]).map(p=>partRow(p,d.deporte)).join('');$('#ta-pct').value='';$('#ta-dur').value=''}
+  else{$('#ta-valor').innerHTML=valorFields(t.tipo,d.deporte,t);$('#ta-dur').value=t.duracionEstimada?'':(t.duracion??'');$('#ta-pct').value=t.esfuerzo??''}
+  $('#ta-title').textContent='Editar tarea '+(t.orden||'');$('#ta-submit').textContent='Guardar tarea';$('#ta-cancel').hidden=false;
+  setTaskMode(t.tipo);$('#tarea-form').scrollIntoView({behavior:'smooth',block:'start'})}
+function objLine(e){return e.it?`${nf.format(e.pct)} % de ${TESTS[e.ref.test.tipo].n} (${fmtTest(e.ref.test)})`:''}
+function taHint(){if(!sheet||!$('#tarea-form'))return;const d=curDep();const tipo=$('#ta-tipo').value;const noRefs=!refsDe(d).length;
+  if(tipo==='compuesta'){
+    let sum=0,missing=0,n=0;
+    document.querySelectorAll('#ta-parts .part').forEach(row=>{const raw=readPart(row);const h=row.querySelector('.p-hint');const empty=!String(raw.valor||'').trim()&&raw.pct==null&&raw.dur==null;
+      if(empty){h.textContent='';h.className='p-hint';return}
+      n++;const e=evalTask(raw,d);const vi=row.querySelector('.p-v');
+      if(e.filled&&!String(raw.valor||'').trim())vi.placeholder=String(e.v);
+      if(e.dur!=null)sum+=e.dur;else missing++;
+      if(e.err&&!(e.v==null&&!raw.pct&&!String(raw.valor||'').trim())){h.textContent=e.err;h.className='p-hint hint-warn';return}
+      const bits=[];if(e.it)bits.push('→ '+e.it.txt+' · '+objLine(e)+(e.filled?' · valor calculado':''));
+      else if(raw.pct&&noRefs)bits.push('Sin tests registrados para calcular el %');
+      if(e.durEst)bits.push('≈ '+nf.format(e.dur)+' min');
+      h.textContent=bits.join(' · ');h.className='p-hint';h.title=e.ref?'Test elegido porque '+e.ref.why+'.':''});
+    $('#ta-comp-sum').textContent=n?'Cada serie: '+nf.format(Math.round(sum*10)/10)+' min'+(missing?' ('+missing+(missing===1?' parte':' partes')+' sin duración)':''):'';
+    return;
+  }
+  const vi=$('#ta-v');const unidad=($('#ta-unidad')||{}).value;
+  const raw={tipo,valor:vi?vi.value:'',unidad,pct:num($('#ta-pct').value),dur:num($('#ta-dur').value)};
+  const e=evalTask(raw,d);const o=$('#ta-obj');
+  if(noRefs)o.textContent='Sin tests registrados: registra uno para calcular la carga por % de esfuerzo.';
+  else if(e.it)o.innerHTML=`Objetivo: <strong class="mono">${esc(e.it.txt)}</strong> · ${esc(objLine(e))}<br><span style="font-size:12.5px">Test elegido porque ${esc(e.ref.why)}.</span>`;
+  else if(raw.pct!=null&&e.err)o.innerHTML=`<span class="hint-warn">${esc(e.err)}</span>`;
+  else o.textContent='Escribe el % de esfuerzo y la aplicación calcula el objetivo con el test que mejor encaja.';
+  if(vi){if(e.filled&&!vi.value.trim()){vi.placeholder=String(e.v);vi.title='Si lo dejas vacío se usa el valor calculado: '+e.v}
+    else{vi.placeholder=tipo==='potencia'?'280':tipo==='ritmo'?(unidad==='km/h'?'32':'4:10'):tipo==='tiempo'?'4:00':tipo==='frecuencia'?'90':'1000';vi.title=''}}
+  const h=$('#ta-dur-hint');
+  if(!(raw.dur>0)&&e.est!=null){h.textContent='Vacío: ≈ '+nf.format(Math.round(e.est*10)/10)+' min por serie';$('#ta-dur').placeholder=nf.format(Math.round(e.est*10)/10)}
+  else{h.textContent=tipo==='distancia'?'Con un % se estima sola.':tipo==='tiempo'?'Se toma del tiempo.':'Indícala para sumarla a la sesión.';$('#ta-dur').placeholder=''}}
+
+async function vincular(fromId,toId){
+  const u=depById(fromId);const target=S.deportistas.find(d=>d.id===toId)||S.solicitudes.find(c=>c.id===toId)||{};if(!u)return;
+  const prof=clean(u);for(const k in target){if(k==='id'||k==='aid'||k==='tests')continue;const v=target[k];if(v!==''&&v!=null&&!(k in {pendiente:1,codigo:1,cuenta:1}))prof[k]=v}
+  prof.tests=[].concat(u.tests||[],target.tests||[]).map(t=>Object.assign({},t));prof.cuenta=true;prof.pendiente=false;prof.codigo='';
+  try{
+    await W('set',pAt(toId),prof);
+    for(const s of S.sesiones.filter(s=>s.aid===fromId)){await W('set',pSes(toId,s.id),clean(Object.assign({},s,{tareas:(s.tareas||[]).map(t=>Object.assign({},t))})));await W('del',pSes(fromId,s.id))}
+    await W('del',pAt(fromId));toast(`Cuenta de ${u.nombre} vinculada`);closeSheet();
+  }catch(e){}
+}
+
+async function doDelete(b){const kind=b.dataset.kind,id=b.dataset.id;
+  try{
+    if(kind==='entrenador'){const e=S.entrenadores.find(x=>x.id===id);const n=e?S.deportistas.filter(d=>d.dniEntrenador===e.dni).length:0;
+      if(n){toast(`No se puede eliminar: entrena a ${n} ${n===1?'deportista':'deportistas'}. Asígnales otro entrenador primero.`,true);b.disabled=false;return}
+      await W('del','entrenadores/'+id);toast('Entrenador eliminado');closeSheet();return}
+    if(kind==='deportista'){for(const s of S.sesiones.filter(s=>s.aid===id))await W('del',pSes(id,s.id));await W('del',pAt(id));toast('Deportista eliminado');closeSheet();return}
+    if(kind==='sesion'){const s=ses(id);if(s)await W('del',pSes(s.aid,s.id));toast('Sesión eliminada');closeSheet();return}
+    if(kind==='tarea'){const s=ses(b.dataset.sid);if(!s)return;await saveTareas(s,tareasOf(s).filter(t=>t.id!==id));toast('Tarea eliminada');if($('#ta-id')&&$('#ta-id').value===id)resetTareaForm();return}
+    if(kind==='test'){const d=depById(b.dataset.aid);if(!d)return;await W('update',pAt(d.id),{tests:(d.tests||[]).filter(t=>t.id!==id).map(t=>Object.assign({},t))});toast('Test eliminado');return}
+  }catch(e){if(b.isConnected)b.disabled=false}
+}
+
+/* ================= Eventos ================= */
+document.addEventListener('click',async e=>{
+  const b=e.target.closest('[data-action]');if(!b||b.disabled)return;const a=b.dataset.action,id=b.dataset.id;
+  if(a==='close-sheet')return closeSheet();
+  if(a==='view-as')return setViewAs(id);
+  if(a==='exit-view-as')return setViewAs(null);
+  if(a==='new-entrenador')return openSheet('entrenador',null);
+  if(a==='edit-entrenador')return openSheet('entrenador',id);
+  if(a==='new-deportista')return openSheet('deportista',{link:b.dataset.link});
+  if(a==='edit-deportista')return openSheet('deportista',{id});
+  if(a==='open-deportista')return id&&openSheet('deportista_ver',id);
+  if(a==='new-sesion'){if(!S.deportistas.length)return toast('Primero da de alta a un deportista.',true);return openSheet('sesion_form',{aid:b.dataset.aid})}
+  if(a==='edit-sesion')return openSheet('sesion_form',{id});
+  if(a==='open-sesion')return openSheet('sesion',id);
+  if(a==='new-test'){if(!S.deportistas.length)return toast('Primero da de alta a un deportista.',true);return openSheet('test',{aid:b.dataset.aid})}
+  if(a==='edit-tarea')return loadTarea(id);
+  if(a==='cancel-tarea')return resetTareaForm();
+  if(a==='add-part'){$('#ta-parts').insertAdjacentHTML('beforeend',partRow({tipo:'distancia'},curDep().deporte));taHint();const r=$('#ta-parts').lastElementChild;r&&r.querySelector('.p-v').focus();return}
+  if(a==='del-part'){const r=b.closest('.part');if(r)r.remove();taHint();return}
+  if(a==='dur-edit'){const s=ses(id);const f=$('#dur-form');if(!s||!f)return;f.hidden=false;$('#du-min').value=Math.round(+s.duracion||0)||'';
+    $('#du-hint').textContent='Suma de las tareas: '+fmtMin(totalTareas(tareasOf(s)))+'. Al fijarla a mano deja de actualizarse sola.';$('#du-min').focus();return}
+  if(a==='dur-cancel'){$('#dur-form').hidden=true;return}
+  if(a==='dur-auto'){const s=ses(id);if(!s)return;try{await W('update',pSes(s.aid,s.id),{duracionAuto:true,duracion:Math.round(totalTareas(tareasOf(s)))});$('#dur-form').hidden=true;toast('Duración calculada con las tareas')}catch(err){}return}
+  if(a==='new-code'){const d=depById(id);if(!d)return;try{await W('update',pAt(id),{codigo:genCode()});toast('Código nuevo generado')}catch(err){}return}
+  if(a==='link'){b.disabled=true;await vincular(b.dataset.from,b.dataset.to);return}
+  if(a==='del-claim'){try{await W('del',pAt(id));toast('Solicitud descartada')}catch(err){}return}
+  if(a==='cancel-claim'){try{await W('del',pAt(myId))}catch(err){}return}
+  if(a==='del'){
+    if(b.dataset.armed){b.disabled=true;doDelete(b);return}
+    b.dataset.armed='1';b.dataset.orig=b.textContent;b.textContent=b.dataset.warn||'Pulsa otra vez para eliminar';b.classList.add('armed');
+    setTimeout(()=>{if(b.isConnected&&b.dataset.armed){delete b.dataset.armed;b.textContent=b.dataset.orig;b.classList.remove('armed')}},4000);
+  }
+});
+document.addEventListener('submit',async e=>{const f=e.target.closest('form[data-form]');if(!f)return;e.preventDefault();
+  const btn=f.querySelector('[type=submit]');if(btn)btn.disabled=true;formErr(f,'');
+  try{
+    if(f.dataset.form==='claim'){const code=String(new FormData(f).get('codigo')||'').toUpperCase().replace(/\s/g,'');if(code.length<4){formErr(f,'Escribe el código completo.');return}
+      await W('set',pAt(myId),{pendiente:true,codigo:code});return}
+    await SUBMIT[f.dataset.form](f,new FormData(f));
+  }catch(err){}finally{if(btn&&btn.isConnected)btn.disabled=false}});
+document.addEventListener('change',async e=>{const t=e.target;
+  if(t.id==='f-dep'){fDep=t.value;render()}
+  else if(t.id==='f-sport'){fSport=t.value;render()}
+  else if(t.id==='t-dep'){testDep=t.value;render()}
+  else if(t.id==='ss-dep'){const d=depById(t.value);if(d&&d.dniEntrenador)$('#ss-ent').value=d.dniEntrenador}
+  else if(t.id==='ss-auto'){const i=$('#ss-dur');i.disabled=t.checked;if(t.checked)i.value=i.dataset.calc;$('#ss-dur-hint').textContent=t.checked?'Se calcula con la suma de las tareas.':'Duración fijada a mano: no cambiará al editar las tareas.';if(!t.checked)i.focus()}
+  else if(t.id==='te-tipo'||t.id==='te-dep')syncTestField();
+  else if(t.id==='ta-tipo'){if(t.value!=='compuesta')$('#ta-valor').innerHTML=valorFields(t.value,curDep().deporte);setTaskMode(t.value)}
+  else if(t.id==='ta-unidad')taHint();
+  else if(t.classList.contains('p-tipo')){const row=t.closest('.part');const i=row.dataset.part;row.querySelector('.p-vals').outerHTML=partInputs(i,t.value,curDep().deporte,{});taHint()}
+  else if(t.classList.contains('p-u'))taHint();
+  else if(t.id==='dp-foto'&&t.files&&t.files[0]){try{const url=await loadPhoto(t.files[0]);$('#dp-foto-data').value=url;$('#dp-foto-prev').innerHTML=`<img class="avatar lg" src="${url}" alt="">`}catch(err){toast('No se ha podido leer la imagen. Prueba con un JPG o PNG.',true)}}
+  else if(t.id==='dp-nac')fcHint();
+});
+document.addEventListener('input',e=>{const t=e.target;
+  if(t.id==='ss-rpe'){const o=$('#ss-rpe-out');o.textContent=t.value+' · '+RPE[t.value];o.style.background=rpeColor(t.value)}
+  if(t.id==='re-rpe'){const o=$('#re-rpe-out');o.textContent=t.value+' · '+RPE[t.value];o.style.background=rpeColor(t.value)}
+  if(t.classList.contains('re-dur')){const v=num(t.value),plan=num(t.dataset.plan);const sel=document.getElementById(t.id.replace(/-dur$/,'-estado'));
+    if(sel&&v!=null)sel.value=v===0?'no':plan&&v>=plan*0.95?'completada':'parcial'}
+  if(t.id==='ta-v'||t.id==='ta-pct'||t.id==='ta-dur'||t.classList.contains('p-v')||t.classList.contains('p-pct')||t.classList.contains('p-dur'))taHint();
+  if(t.id==='calc-pct'){const d=depById(testDep);const p=num(t.value);const out=$('#calc-out');if(p>0&&p<=200){calcPct=p;if(d&&out&&refsDe(d).length)out.innerHTML=refsTable(d,p)}}
+  if((t.id==='dp-dni'||t.id==='en-dni')&&!t.readOnly){const v=normDni(t.value);let s=t.parentElement.querySelector('small');if(!s){s=document.createElement('small');t.parentElement.appendChild(s)}
+    s.textContent=v.length>=8&&!dniOk(v)?'La letra no coincide con el número (se puede guardar igualmente).':'';s.className='hint-warn'}
+});
+document.addEventListener('keydown',e=>{if(e.key==='Escape'&&sheet)return closeSheet();
+  const r=e.target.closest&&e.target.closest('[role=button][data-action]');if(r&&r===e.target&&(e.key==='Enter'||e.key===' ')){e.preventDefault();r.click()}});
+function fcHint(){const h=$('#dp-fc-hint');if(!h)return;const a=age(($('#dp-nac')||{}).value);h.textContent=a!=null&&a>0?`Estimada por edad (Tanaka): ${Math.round(208-0.7*a)} ppm`:''}
+function loadPhoto(file){return new Promise((res,rej)=>{const r=new FileReader();r.onload=()=>{const img=new Image();img.onload=()=>{const N=240,c=document.createElement('canvas');c.width=c.height=N;const k=Math.max(N/img.width,N/img.height),w=img.width*k,h=img.height*k;c.getContext('2d').drawImage(img,(N-w)/2,(N-h)/2,w,h);res(c.toDataURL('image/jpeg',.82))};img.onerror=rej;img.src=r.result};r.onerror=rej;r.readAsDataURL(file)})}
+
+/* ================= Arranque ================= */
+function setStatus(shared){sharedMode=shared;const el=$('#mode');el.className='mode '+(shared?'shared':'local');
+  el.querySelector('span').textContent=shared?(viewAs?'Vista previa':isCoach?'Datos del grupo':'Solo tus datos'):'Modo local: solo en este navegador';
+  $('#role').textContent=viewAs?'Vista de deportista':isCoach?'Entrenador':'Deportista'}
+async function init(){
+  view=currentView();render();
+  let db=null,user=null;
+  try{if(window.claude&&typeof window.claude.use==='function'){[db,user]=await Promise.all([window.claude.use('db'),window.claude.use('user')])}}catch(e){db=null}
+  if(db){
+    store=dbStore(db);
+    isCoach=user?await user.canEdit():false;
+    myId=user?await user.id():null;
+  }else{store=localStore();isCoach=true}
+  realCoach=isCoach;
+  setStatus(!!db);
+  if(isCoach)startCoach();
+  else if(myId)startAthlete();
+  else{ready.entrenadores=true;ready.atletas=true;render()}
+}
+init();
+})();
+</script>
+
