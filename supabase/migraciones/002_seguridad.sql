@@ -43,7 +43,7 @@ create or replace function privado.mi_dni_entrenador()
 returns text
 language sql stable security definer set search_path = ''
 as $$
-  select dni from public.entrenadores
+  select dni_entrenador from public.entrenadores
   where usuario_id = (select auth.uid());
 $$;
 
@@ -75,7 +75,7 @@ language sql stable security definer set search_path = ''
 as $$
   select exists (
     select 1 from public.sesiones s
-    where s.id = p_id_sesion
+    where s.id_sesion = p_id_sesion
       and (privado.es_mi_deportista(s.dni_deportista)
            or s.dni_deportista = privado.mi_dni_deportista())
   );
@@ -89,7 +89,7 @@ language sql stable security definer set search_path = ''
 as $$
   select exists (
     select 1 from public.sesiones s
-    where s.id = p_id_sesion
+    where s.id_sesion = p_id_sesion
       and (privado.es_mi_deportista(s.dni_deportista)
            or (s.dni_deportista = privado.mi_dni_deportista() and s.creada_por = 'deportista'))
   );
@@ -109,7 +109,7 @@ create or replace function privado.sesion_de_tarea(p_id_tarea bigint)
 returns bigint
 language sql stable security definer set search_path = ''
 as $$
-  select id_sesion from public.tareas where id = p_id_tarea;
+  select id_sesion from public.tareas where id_tarea = p_id_tarea;
 $$;
 
 revoke all on all functions in schema privado from public;
@@ -125,7 +125,11 @@ alter table public.deportistas         enable row level security;
 alter table public.tests               enable row level security;
 alter table public.sesiones            enable row level security;
 alter table public.tareas              enable row level security;
-alter table public.partes_tarea        enable row level security;
+alter table public.tareas_distancia    enable row level security;
+alter table public.tareas_potencia     enable row level security;
+alter table public.tareas_tiempo       enable row level security;
+alter table public.tareas_ritmo        enable row level security;
+alter table public.tareas_frecuencia   enable row level security;
 alter table public.sesiones_realizadas enable row level security;
 alter table public.tareas_realizadas   enable row level security;
 alter table public.trazas              enable row level security;
@@ -248,7 +252,7 @@ create policy "sesiones: crear"
 
 create policy "sesiones: editar"
   on public.sesiones for update to authenticated
-  using (privado.puede_editar_sesion(id))
+  using (privado.puede_editar_sesion(id_sesion))
   with check (
     privado.es_mi_deportista(dni_deportista)
     or (dni_deportista = privado.mi_dni_deportista() and creada_por = 'deportista')
@@ -256,10 +260,10 @@ create policy "sesiones: editar"
 
 create policy "sesiones: borrar"
   on public.sesiones for delete to authenticated
-  using (privado.puede_editar_sesion(id));
+  using (privado.puede_editar_sesion(id_sesion));
 
 -- ---------------------------------------------------------------------
--- 7. TAREAS y PARTES DE TAREA (el plan de la sesión)
+-- 7. TAREAS y sus SUBENTIDADES (el plan de la sesión)
 -- ---------------------------------------------------------------------
 create policy "tareas: ver"
   on public.tareas for select to authenticated
@@ -278,22 +282,26 @@ create policy "tareas: borrar"
   on public.tareas for delete to authenticated
   using (privado.puede_editar_sesion(id_sesion));
 
-create policy "partes_tarea: ver"
-  on public.partes_tarea for select to authenticated
-  using (privado.puede_ver_sesion(privado.sesion_de_tarea(id_tarea)));
-
-create policy "partes_tarea: crear"
-  on public.partes_tarea for insert to authenticated
-  with check (privado.puede_editar_sesion(privado.sesion_de_tarea(id_tarea)));
-
-create policy "partes_tarea: editar"
-  on public.partes_tarea for update to authenticated
-  using (privado.puede_editar_sesion(privado.sesion_de_tarea(id_tarea)))
-  with check (privado.puede_editar_sesion(privado.sesion_de_tarea(id_tarea)));
-
-create policy "partes_tarea: borrar"
-  on public.partes_tarea for delete to authenticated
-  using (privado.puede_editar_sesion(privado.sesion_de_tarea(id_tarea)));
+-- Las cinco subentidades (tareas_distancia, tareas_potencia, tareas_tiempo,
+-- tareas_ritmo y tareas_frecuencia) siguen las mismas reglas que su tarea.
+-- Como son iguales, se crean con un bucle: para cada tabla, cuatro políticas.
+do $$
+declare
+  t text;
+begin
+  foreach t in array array['tareas_distancia', 'tareas_potencia', 'tareas_tiempo', 'tareas_ritmo', 'tareas_frecuencia'] loop
+    execute format('create policy "%1$s: ver" on public.%1$I for select to authenticated
+                      using (privado.puede_ver_sesion(privado.sesion_de_tarea(id_tarea)))', t);
+    execute format('create policy "%1$s: crear" on public.%1$I for insert to authenticated
+                      with check (privado.puede_editar_sesion(privado.sesion_de_tarea(id_tarea)))', t);
+    execute format('create policy "%1$s: editar" on public.%1$I for update to authenticated
+                      using (privado.puede_editar_sesion(privado.sesion_de_tarea(id_tarea)))
+                      with check (privado.puede_editar_sesion(privado.sesion_de_tarea(id_tarea)))', t);
+    execute format('create policy "%1$s: borrar" on public.%1$I for delete to authenticated
+                      using (privado.puede_editar_sesion(privado.sesion_de_tarea(id_tarea)))', t);
+  end loop;
+end
+$$;
 
 -- ---------------------------------------------------------------------
 -- 8. LO REALIZADO (sesiones_realizadas, tareas_realizadas, trazas)

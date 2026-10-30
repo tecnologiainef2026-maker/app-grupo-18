@@ -24,24 +24,23 @@ Estado actual: la app funciona como artefacto de Claude en `registro-entrenamien
 
 ## Modelo de datos
 
-Tablas en PostgreSQL (Supabase), con nombres en español, en minúsculas y sin tildes:
+El diagrama entidad-relación está en `docs/modelo-er.png`. Tablas en PostgreSQL (Supabase), con nombres en español, en minúsculas y sin tildes:
 
-| Tabla | Qué guarda | Clave primaria | Se relaciona con |
+| Tabla | Qué guarda | Clave primaria | Claves foráneas |
 |---|---|---|---|
-| `entrenadores` | Entrenadores del grupo | `dni` | — |
-| `deportistas` | Ficha de cada deportista y su deporte | `dni` | `entrenadores` (su entrenador) |
-| `tests` | Resultados de los tests de rendimiento | `id` | `deportistas` |
-| `sesiones` | Sesión que realiza un deportista y diseña un entrenador | `id` | `deportistas`, `entrenadores` |
-| `tareas` | Bloques de la sesión, en orden, con su % de esfuerzo | `id` | `sesiones`, `tests` (test de referencia) |
-| `partes_tarea` | Partes de una tarea compuesta | `id` | `tareas`, `tests` |
-| `sesiones_realizadas` | Lo que el deportista anota de la sesión (1 por sesión) | `id_sesion` | `sesiones` |
-| `tareas_realizadas` | Lo realizado en cada tarea (1 por tarea) | `id_tarea` | `tareas` |
-| `trazas` | Puntos del archivo del reloj (jsonb) | `id_sesion` | `sesiones_realizadas` |
+| `entrenadores` | Entrenadores del grupo | `dni_entrenador` | — |
+| `deportistas` | Ficha de cada deportista y su deporte | `dni` | `dni_entrenador` → `entrenadores` |
+| `tests` | Resultados de FTP, VO₂ máx, contrarrelojes de 30 min y 2000 m y sprint de 200 m (columna `tipo`) | `id_test` | `dni_deportista` → `deportistas` |
+| `sesiones` | Sesión que realiza un deportista y diseña un entrenador | `id_sesion` (único también: deportista + fecha + hora) | `dni_deportista`, `dni_entrenador` |
+| `tareas` | Bloques de la sesión: orden, series, descanso, zona de entrenamiento (%), duración | `id_tarea` | `id_sesion`, `id_test_referencia`, `id_tarea_padre` |
+| `tareas_distancia`, `tareas_potencia`, `tareas_tiempo`, `tareas_ritmo`, `tareas_frecuencia` | Subentidades de la tarea: lo que se mide | `id_tarea` | `id_tarea` → `tareas` (1:1) |
+| `sesiones_realizadas` | Lo que el deportista anota de la sesión | `id_sesion` | `id_sesion` → `sesiones` (1:1) |
+| `tareas_realizadas` | Lo realizado en cada tarea | `id_tarea` | `id_tarea` → `tareas` (1:1) |
+| `trazas` | Puntos del archivo del reloj (jsonb) | `id_sesion` | `id_sesion` → `sesiones_realizadas` (1:1) |
 
-- `entrenadores.usuario_id` y `deportistas.usuario_id` enlazan cada ficha con su cuenta de Supabase Auth. La seguridad (RLS) usa ese enlace para saber quién es quién.
-- Un deportista tiene **un solo entrenador**, y un entrenador tiene muchos deportistas. Un deportista tiene muchas sesiones y tests. Una sesión tiene muchas tareas.
-- **Cada entrenador ve solo a sus deportistas** (y a los que aún no tienen entrenador, para poder asignárselos). Cada deportista ve solo sus datos.
-- La relación muchos a muchos entre entrenadores y deportistas («el entrenador diseña sesiones para el deportista») se resuelve con la tabla `sesiones`.
+- Relaciones del diagrama, todas 1:N: **Entrena** (entrenador → deportistas), **Realizan** (deportista → sesiones), **Diseña** (entrenador → sesiones), **Tienen** (sesión → tareas) y cada test (deportista → resultados). No hay relaciones N:M.
+- Un deportista tiene **un solo entrenador**. **Cada entrenador ve solo a sus deportistas** (y a los que aún no tienen entrenador, para poder asignárselos). Cada deportista ve solo sus datos.
+- Fuera del diagrama, añadido por la app: lo realizado (`sesiones_realizadas`, `tareas_realizadas`, `trazas`), el test de referencia de cada tarea, las tareas compuestas (`id_tarea_padre`), el nombre del entrenador y `usuario_id` en `entrenadores` y `deportistas`, que enlaza cada ficha con su cuenta de Supabase Auth para la seguridad (RLS).
 - Las migraciones están en `supabase/migraciones/`:
   - `001_tablas.sql` crea las tablas.
   - `002_seguridad.sql` activa RLS y crea las políticas.

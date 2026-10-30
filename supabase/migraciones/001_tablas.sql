@@ -1,39 +1,43 @@
 -- =====================================================================
 -- 001_tablas.sql · Grupo 18 · NEXØ
--- Crea las tablas de la app: entrenadores, deportistas, tests, sesiones,
--- tareas (y sus partes) y lo que el deportista registra como realizado.
+-- Traducción a PostgreSQL del diagrama E-R (docs/modelo-er.png).
+--
+-- Del diagrama:   entrenadores, deportistas, tests (FTP, VO2 máx,
+--                 contrarrelojes y sprint), sesiones, tareas y sus cinco
+--                 subentidades (distancia, potencia, tiempo, ritmo, frecuencia).
+-- Añadido por la app (no está en el diagrama): lo que el deportista
+--                 registra (sesiones_realizadas, tareas_realizadas, trazas),
+--                 el test de referencia de cada tarea, las tareas compuestas
+--                 (id_tarea_padre) y usuario_id para las cuentas.
 --
 -- Convenciones:
 --   · Nombres en español, en minúsculas, sin tildes y en plural.
---   · Las duraciones de las tareas van en minutos (numeric) y los descansos
---     en segundos (integer), igual que en la app.
---   · Los ritmos se guardan como número: segundos por km (unidad 's/km')
---     o km/h (unidad 'km/h'). Así se pueden comparar y ordenar.
+--   · Duraciones en minutos (numeric); descansos y tiempos en segundos.
+--   · Ritmos como número: segundos por km ('s/km') o km/h ('km/h').
 --
--- Se ejecuta UNA vez, en el SQL Editor de Supabase o con la CLI.
 -- Todavía NO se ha ejecutado: espera la aprobación del grupo.
 -- =====================================================================
 
 begin;
 
 -- ---------------------------------------------------------------------
--- ENTRENADORES
--- Diseñan las sesiones y entrenan a los deportistas.
+-- ENTRENADORES (entidad Entrenador)
 -- ---------------------------------------------------------------------
 create table public.entrenadores (
-  dni           text primary key,                       -- DNI/NIE, p. ej. 12345678Z
-  nombre        text not null,
-  correo        text,
-  especialidad  text,
-  usuario_id    uuid unique references auth.users (id) on delete set null,
+  dni_entrenador  text primary key,
+  nombre          text not null,                        -- no está en el diagrama; la app lo muestra
+  correo          text,
+  especialidad    text,
+  usuario_id      uuid unique references auth.users (id) on delete set null,
                                                         -- su cuenta de Supabase Auth (para la seguridad)
-  creado_en     timestamptz not null default now(),
-  constraint entrenadores_dni_formato check (dni ~ '^[XYZ0-9][0-9]{7}[A-Z]$')
+  creado_en       timestamptz not null default now(),
+  constraint entrenadores_dni_formato check (dni_entrenador ~ '^[XYZ0-9][0-9]{7}[A-Z]$')
 );
 
 -- ---------------------------------------------------------------------
--- DEPORTISTAS
--- Cada deportista practica un deporte y tiene (como mucho) un entrenador.
+-- DEPORTISTAS (entidad Deportista)
+-- Relación «Entrena»: un entrenador entrena a N deportistas y cada
+-- deportista tiene 1 entrenador → la clave foránea va en deportistas.
 -- ---------------------------------------------------------------------
 create table public.deportistas (
   dni               text primary key,
@@ -44,7 +48,7 @@ create table public.deportistas (
   objetivos         text,
   fc_max            smallint,                           -- frecuencia cardiaca máxima (ppm)
   fc_reposo         smallint,                           -- frecuencia cardiaca en reposo (ppm)
-  dni_entrenador    text references public.entrenadores (dni)
+  dni_entrenador    text references public.entrenadores (dni_entrenador)
                          on update cascade on delete restrict,
   usuario_id        uuid unique references auth.users (id) on delete set null,
   creado_en         timestamptz not null default now(),
@@ -56,12 +60,13 @@ create table public.deportistas (
 );
 
 -- ---------------------------------------------------------------------
--- TESTS
--- Resultados de los tests de rendimiento. Sobre el último de cada tipo
--- se calcula el % de esfuerzo de las tareas.
+-- TESTS (entidades FTP, VO2 máx, Contrarreloj 30min, Contrarreloj 2000m
+-- y Sprint 200m)
+-- Las cinco tienen los mismos datos, así que van en una sola tabla con
+-- una columna «tipo». Un deportista tiene N resultados de cada test.
 -- ---------------------------------------------------------------------
 create table public.tests (
-  id              bigint generated always as identity primary key,
+  id_test         bigint generated always as identity primary key,
   dni_deportista  text not null references public.deportistas (dni)
                        on update cascade on delete cascade,
   tipo            text not null,
@@ -73,15 +78,20 @@ create table public.tests (
 );
 
 -- ---------------------------------------------------------------------
--- SESIONES
--- Una sesión la realiza un deportista y la diseña un entrenador.
--- Es la tabla que une a entrenadores y deportistas en cada entrenamiento.
+-- SESIONES (entidad Sesiones)
+-- «Realizan»: 1 deportista realiza N sesiones → FK dni_deportista.
+-- «Diseña»:   1 entrenador diseña N sesiones  → FK dni_entrenador.
+--   (El diagrama pone «Nombre Entrenador»; la FK tiene que apuntar a la
+--   clave primaria de entrenadores, que es el DNI.)
+-- Clave primaria: id_sesion (número automático). El diagrama identifica la
+-- sesión por fecha y hora; eso se mantiene como clave única junto con el
+-- deportista, porque dos deportistas pueden entrenar a la misma hora.
 -- ---------------------------------------------------------------------
 create table public.sesiones (
-  id              bigint generated always as identity primary key,
+  id_sesion       bigint generated always as identity primary key,
   dni_deportista  text not null references public.deportistas (dni)
                        on update cascade on delete cascade,
-  dni_entrenador  text references public.entrenadores (dni)
+  dni_entrenador  text references public.entrenadores (dni_entrenador)
                        on update cascade on delete set null,
   fecha           date not null,
   hora            time not null,
@@ -91,85 +101,99 @@ create table public.sesiones (
   rpe             smallint,                             -- RPE previsto (escala CR10)
   creada_por      text not null default 'entrenador',
   creado_en       timestamptz not null default now(),
+  constraint sesiones_deportista_fecha_hora unique (dni_deportista, fecha, hora),
   constraint sesiones_rpe check (rpe is null or rpe between 1 and 10),
   constraint sesiones_duracion check (duracion_min is null or duracion_min >= 0),
   constraint sesiones_creada_por check (creada_por in ('entrenador', 'deportista'))
 );
 
 -- ---------------------------------------------------------------------
--- TAREAS
--- Bloques de una sesión, en orden. Una tarea "compuesta" no tiene valor
--- propio: sus partes van en la tabla partes_tarea.
+-- TAREAS (entidad Tareas, la superentidad)
+-- «Tienen»: 1 sesión tiene N tareas → FK id_sesion (en el diagrama, Fecha y Hora).
+-- Lo que se mide (distancia, potencia…) va en las subentidades de abajo.
 -- ---------------------------------------------------------------------
 create table public.tareas (
-  id                  bigint generated always as identity primary key,
-  id_sesion           bigint not null references public.sesiones (id) on delete cascade,
+  id_tarea            bigint generated always as identity primary key,
+  id_sesion           bigint not null references public.sesiones (id_sesion) on delete cascade,
+  id_tarea_padre      bigint references public.tareas (id_tarea) on delete cascade,
+                                                        -- solo en las partes de una tarea compuesta
   orden               smallint not null default 1,
-  tipo                text not null,
-  valor               numeric,                          -- metros, km, W, segundos, s/km, km/h, rpm…
-  unidad              text,
   series              smallint not null default 1,
   descanso_seg        integer,                          -- descanso entre series
-  esfuerzo_pct        numeric,                          -- % de esfuerzo sobre el test de referencia
-  id_test_referencia  bigint references public.tests (id) on delete set null,
-  objetivo            text,                             -- texto calculado, p. ej. '4:36 /km'
+  zona_entrenamiento  numeric,                          -- % de esfuerzo sobre el test de referencia
   duracion_min        numeric,                          -- duración de UNA serie
+  id_test_referencia  bigint references public.tests (id_test) on delete set null,
+  objetivo            text,                             -- texto calculado, p. ej. '4:36 /km'
   duracion_estimada   boolean not null default false,
-  constraint tareas_tipo check (tipo in ('distancia', 'potencia', 'tiempo', 'ritmo', 'frecuencia', 'compuesta')),
-  constraint tareas_valor check ((tipo = 'compuesta') = (valor is null)),
-  constraint tareas_unidad check (unidad is null or unidad in ('m', 'km', 'W', 's', 's/km', 'km/h', 'rpm', 'pal/min', 'pasos/min', 'ppm')),
   constraint tareas_series check (series >= 1),
   constraint tareas_descanso check (descanso_seg is null or descanso_seg >= 0),
-  constraint tareas_esfuerzo check (esfuerzo_pct is null or (esfuerzo_pct > 0 and esfuerzo_pct <= 200))
+  constraint tareas_zona check (zona_entrenamiento is null or (zona_entrenamiento > 0 and zona_entrenamiento <= 200)),
+  constraint tareas_no_es_su_padre check (id_tarea_padre is distinct from id_tarea)
 );
 
 -- ---------------------------------------------------------------------
--- PARTES DE TAREA
--- Solo para tareas compuestas: cada serie se hace con estas partes, en orden.
+-- SUBENTIDADES DE TAREAS
+-- Cada una tiene como clave primaria el mismo id_tarea, que a la vez es
+-- clave foránea a tareas (relación 1:1, como en el diagrama).
 -- ---------------------------------------------------------------------
-create table public.partes_tarea (
-  id                  bigint generated always as identity primary key,
-  id_tarea            bigint not null references public.tareas (id) on delete cascade,
-  orden               smallint not null,
-  tipo                text not null,
-  valor               numeric not null,
-  unidad              text,
-  esfuerzo_pct        numeric,
-  id_test_referencia  bigint references public.tests (id) on delete set null,
-  objetivo            text,
-  duracion_min        numeric,
-  duracion_estimada   boolean not null default false,
-  constraint partes_tarea_tipo check (tipo in ('distancia', 'potencia', 'tiempo', 'ritmo', 'frecuencia')),
-  constraint partes_tarea_esfuerzo check (esfuerzo_pct is null or (esfuerzo_pct > 0 and esfuerzo_pct <= 200)),
-  constraint partes_tarea_orden_unico unique (id_tarea, orden)
+create table public.tareas_distancia (
+  id_tarea   bigint primary key references public.tareas (id_tarea) on delete cascade,
+  distancia  numeric not null,
+  unidad     text not null default 'm',
+  constraint tareas_distancia_valor check (distancia > 0),
+  constraint tareas_distancia_unidad check (unidad in ('m', 'km'))
+);
+
+create table public.tareas_potencia (
+  id_tarea    bigint primary key references public.tareas (id_tarea) on delete cascade,
+  potencia_w  numeric not null,
+  constraint tareas_potencia_valor check (potencia_w > 0)
+);
+
+create table public.tareas_tiempo (
+  id_tarea    bigint primary key references public.tareas (id_tarea) on delete cascade,
+  tiempo_seg  integer not null,
+  constraint tareas_tiempo_valor check (tiempo_seg > 0)
+);
+
+create table public.tareas_ritmo (
+  id_tarea  bigint primary key references public.tareas (id_tarea) on delete cascade,
+  ritmo     numeric not null,                           -- segundos por km, o km/h
+  unidad    text not null default 's/km',
+  constraint tareas_ritmo_valor check (ritmo > 0),
+  constraint tareas_ritmo_unidad check (unidad in ('s/km', 'km/h'))
+);
+
+create table public.tareas_frecuencia (
+  id_tarea    bigint primary key references public.tareas (id_tarea) on delete cascade,
+  frecuencia  numeric not null,
+  unidad      text not null,
+  constraint tareas_frecuencia_valor check (frecuencia > 0),
+  constraint tareas_frecuencia_unidad check (unidad in ('rpm', 'pal/min', 'pasos/min', 'ppm'))
 );
 
 -- ---------------------------------------------------------------------
--- SESIONES REALIZADAS
--- Lo que el deportista anota al terminar. Como mucho una por sesión (1:1),
--- por eso su clave primaria es a la vez la clave foránea a sesiones.
+-- LO REALIZADO (no está en el diagrama)
+-- sesiones_realizadas y tareas_realizadas son 1:1 con sesiones y tareas,
+-- por eso su clave primaria es a la vez la clave foránea.
 -- ---------------------------------------------------------------------
 create table public.sesiones_realizadas (
-  id_sesion         bigint primary key references public.sesiones (id) on delete cascade,
-  duracion_min      numeric,                            -- minutos reales
-  rpe               smallint,                           -- RPE real
-  comentario        text,
-  ritmo             numeric,                            -- solo si la sesión no tiene tareas
-  unidad_ritmo      text,
-  potencia_w        numeric,
-  fc_media          smallint,
-  distancia_m       numeric,
-  registrado_en     timestamptz not null default now(),
+  id_sesion      bigint primary key references public.sesiones (id_sesion) on delete cascade,
+  duracion_min   numeric,                               -- minutos reales
+  rpe            smallint,                              -- RPE real
+  comentario     text,
+  ritmo          numeric,                               -- solo si la sesión no tiene tareas
+  unidad_ritmo   text,
+  potencia_w     numeric,
+  fc_media       smallint,
+  distancia_m    numeric,
+  registrado_en  timestamptz not null default now(),
   constraint sesiones_realizadas_rpe check (rpe is null or rpe between 1 and 10),
   constraint sesiones_realizadas_unidad check (unidad_ritmo is null or unidad_ritmo in ('s/km', 'km/h'))
 );
 
--- ---------------------------------------------------------------------
--- TAREAS REALIZADAS
--- Lo realizado en cada tarea (1:1 con tareas).
--- ---------------------------------------------------------------------
 create table public.tareas_realizadas (
-  id_tarea      bigint primary key references public.tareas (id) on delete cascade,
+  id_tarea      bigint primary key references public.tareas (id_tarea) on delete cascade,
   estado        text not null default 'completada',
   duracion_min  numeric,
   auto          boolean not null default false,         -- true = minutos calculados (previsto o reloj)
@@ -183,11 +207,7 @@ create table public.tareas_realizadas (
   constraint tareas_realizadas_unidad check (unidad_ritmo is null or unidad_ritmo in ('s/km', 'km/h'))
 );
 
--- ---------------------------------------------------------------------
--- TRAZAS
--- Archivo del reloj (GPX/TCX) ya reducido a ~480 puntos. Los puntos van en
--- jsonb porque se leen y se guardan siempre juntos.
--- ---------------------------------------------------------------------
+-- Archivo del reloj (GPX/TCX) reducido a ~480 puntos. Se lee y se guarda entero, por eso va en jsonb.
 create table public.trazas (
   id_sesion       bigint primary key references public.sesiones_realizadas (id_sesion) on delete cascade,
   nombre_archivo  text,
@@ -198,10 +218,9 @@ create table public.trazas (
 -- Índices para las búsquedas más habituales (las claves foráneas no los crean solas).
 create index deportistas_dni_entrenador_idx on public.deportistas (dni_entrenador);
 create index tests_deportista_tipo_fecha_idx on public.tests (dni_deportista, tipo, fecha desc);
-create index sesiones_deportista_fecha_idx on public.sesiones (dni_deportista, fecha desc);
 create index sesiones_dni_entrenador_idx on public.sesiones (dni_entrenador);
 create index tareas_sesion_orden_idx on public.tareas (id_sesion, orden);
+create index tareas_padre_idx on public.tareas (id_tarea_padre);
 create index tareas_test_referencia_idx on public.tareas (id_test_referencia);
-create index partes_tarea_test_referencia_idx on public.partes_tarea (id_test_referencia);
 
 commit;
