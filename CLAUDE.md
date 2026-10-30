@@ -6,7 +6,7 @@ NEXØ sirve para **prescribir entrenamientos y registrar las sesiones de nuestro
 
 - **El entrenador** da de alta a los deportistas, registra sus tests (FTP, VO₂ máx, contrarreloj de 30 min, contrarreloj de 2000 m, sprint de 200 m) y diseña sesiones con tareas. Cada tarea lleva un % de esfuerzo sobre un test de referencia.
 - **El deportista** ve solo sus datos y anota lo que ha hecho en cada sesión: minutos, ritmo, FC, RPE y, si quiere, el archivo GPX o TCX de su reloj.
-- La app calcula la carga (sRPE = RPE × minutos), el % de cumplimiento y un análisis de cada sesión con zonas de esfuerzo.
+- La app calcula la carga con el **hrTSS** (`hrTSS = horas × hrIF² × 100`, con `hrIF = (FC media − FC reposo) / (FC umbral − FC reposo)`), el % de cumplimiento y un análisis de cada sesión con zonas de esfuerzo. Para la carga, cada deportista necesita su FC en reposo y su FC umbral (LTHR).
 
 ## Miembros del grupo
 
@@ -44,6 +44,7 @@ El diagrama entidad-relación está en `docs/modelo-er.png`. Tablas en PostgreSQ
 - Las migraciones están en `supabase/migraciones/`:
   - `001_tablas.sql` crea las tablas.
   - `002_seguridad.sql` activa RLS y crea las políticas.
+  - `003_fc_umbral.sql` añade `deportistas.fc_umbral` (LTHR) para el hrTSS. Es una propuesta pendiente de aprobación.
 
 ## Reglas para trabajar en este repositorio
 

@@ -369,7 +369,24 @@ const ses=id=>S.sesiones.find(s=>s.id===id);
 const tareasOf=s=>((s&&s.tareas)||[]).slice().sort((a,b)=>(a.orden||0)-(b.orden||0));
 const durEf=s=>s.realizado&&s.realizado.duracion!=null?+s.realizado.duracion:(+s.duracion||0);
 const rpeEf=s=>s.realizado&&s.realizado.rpe?+s.realizado.rpe:(+s.rpe||0);
-const carga=s=>rpeEf(s)*durEf(s); // si el deportista registró lo realizado, cuenta lo real
+/* ================= Carga: hrTSS =================
+   hrTSS = t × hrIF² × 100, con t en horas y hrIF = (FC − FC reposo) / (FC umbral − FC reposo).
+   · Con el archivo del reloj se suma tramo a tramo (cada ~5 s), así cuenta el tiempo en cada zona.
+   · Sin archivo se usa la FC media anotada de cada tarea (o de la sesión) y sus minutos reales;
+     a las tareas sin FC se les aplica la FC media de las demás.
+   · Solo cuentan las sesiones registradas con FC. Hace falta la FC en reposo y la FC umbral (LTHR). */
+const sinUmbral=d=>!(+d.fcReposo>0&&+d.fcUmbral>+d.fcReposo);
+function hrIF(fc,d){return Math.max(0,(fc-d.fcReposo)/(d.fcUmbral-d.fcReposo))}
+function hrTSS(s){const r=s.realizado;const d=depById(s.aid)||{};if(!r||sinUmbral(d))return null;
+  const tz=r.traza;
+  if(tz&&tz.fc&&tz.t&&tz.t.length>1){let a=0;for(let i=1;i<tz.t.length;i++)a+=(tz.t[i]-tz.t[i-1])/3600*hrIF((tz.fc[i]+tz.fc[i-1])/2,d)**2;return {v:a*100,src:'reloj'}}
+  const ts=tareasOf(s);const rt=r.tareas||{};
+  const segs=ts.length?ts.map(t=>{const x=rt[t.id]||{};return {min:x.estado==='no'?0:(+x.duracion||0),fc:num(x.fc)}}):[{min:+r.duracion||0,fc:num(r.fc)}];
+  const known=segs.filter(g=>g.fc>0&&g.min>0);if(!known.length)return null;
+  const media=known.reduce((a,g)=>a+g.fc*g.min,0)/known.reduce((a,g)=>a+g.min,0);
+  return {v:segs.reduce((a,g)=>a+g.min/60*hrIF(g.fc>0?g.fc:media,d)**2*100,0),src:'FC anotada'}}
+const carga=s=>{const h=hrTSS(s);return h?h.v:0};
+const FORMULA='hrTSS = horas × hrIF² × 100';
 function cumpl(s){const r=s.realizado;if(!r||r.duracion==null)return null;const p=+s.duracion||0;return p?Math.round(100*(+r.duracion)/p):null}
 function cumplCls(p){return p==null?'':p>=90?'cb-ok':p>=50?'cb-warn':'cb-bad'}
 function estadoSes(s){if(s.realizado){const p=cumpl(s);return `<span class="zb ${cumplCls(p)||'cb-ok'}">${p!=null?'Hecho '+p+' %':'Registrada'}</span>`}
@@ -545,7 +562,7 @@ R.panel=function(){
   const last=sortSes(S.sesiones)[0];
   const recent=sortSes(S.sesiones).slice(0,6);
   const me=!isCoach&&S.deportistas[0];
-  const sumTxt=w=>`<span class="week-sum">Esta semana: <b>${w.n}</b> ${w.n===1?'sesión':'sesiones'} · <b>${fmtMin(w.min)}</b> · <b>${n0.format(w.v)}</b> UA</span>`;
+  const sumTxt=w=>`<span class="week-sum">Esta semana: <b>${w.n}</b> ${w.n===1?'sesión':'sesiones'} · <b>${fmtMin(w.min)}</b> · <b>${n0.format(w.v)}</b> TSS${w.sin?` · <span class="hint-warn">${w.sin} sin FC</span>`:''}</span>`;
   const recentCard=`<section class="card" style="display:grid;gap:12px">
       <div class="card-head" style="margin:0"><h3>Últimas sesiones</h3><a href="#sesiones" class="eyebrow">Ver todas</a></div>
       ${recent.length?`<div class="rows">${recent.map(sesRow).join('')}</div>`:`<p class="muted">Aún no hay sesiones. Crea la primera con «Nueva sesión».</p>`}</section>`;
@@ -557,7 +574,7 @@ R.panel=function(){
     const avisoAt=pend.length?`<div class="notice"><span>${pend.length===1?'Tienes 1 sesión':'Tienes '+pend.length+' sesiones'} sin registrar. Apunta lo que hiciste para que tu entrenador lo vea.</span><button class="btn small primary" data-action="open-sesion" data-id="${esc(pend[0].id)}">Registrar la última</button></div>`:'';
     return head+avisoAt+`<div class="panel-grid"><div class="stack">
       <section class="card"><div class="card-head"><h3>Carga semanal</h3>${sumTxt(wk[7])}</div>${loadChart(wk,me&&me.deporte,true)}
-        <div class="legend"><span class="eyebrow" style="margin-left:auto">sRPE = RPE × minutos (UA)</span></div></section>
+        <div class="legend">${me&&sinUmbral(me)?'<span class="hint-warn" style="font-size:13px">Falta tu FC umbral (LTHR) en tu ficha: sin ella no se puede calcular la carga.</span>':''}<span class="eyebrow" style="margin-left:auto">${FORMULA}</span></div></section>
       ${me?`<section class="card"><div class="card-head"><h3>Tus referencias (100 %)</h3><a href="#tests" class="eyebrow">Calculadora</a></div>${refsDe(me).length?refsTable(me,100):`<p class="muted">${refsNeeded()}</p>`}</section>`:''}
     </div>${recentCard}</div>`;
   }
@@ -576,11 +593,11 @@ R.panel=function(){
   const deps=byName(S.deportistas);
   const counts=Object.keys(SPORTS).map(k=>[k,S.deportistas.filter(d=>d.deporte===k).length]);
   return head+top+`
-  <section style="margin-bottom:22px"><div class="card-head"><h3>Carga semanal por deportista</h3><span class="eyebrow">sRPE = RPE × minutos (UA) · últimas 8 semanas</span></div>
+  <section style="margin-bottom:22px"><div class="card-head"><h3>Carga semanal por deportista</h3><span class="eyebrow">${FORMULA} · últimas 8 semanas</span></div>
     ${deps.length?`<div class="loads">${deps.map(d=>{const wk=weeksLoad(S.sesiones.filter(s=>s.aid===d.id));
       return `<article class="card load sp-${esc(d.deporte)}" data-action="open-deportista" data-id="${esc(d.id)}" role="button" tabindex="0" aria-label="Abrir la ficha de ${esc(d.nombre)}">
         <div class="load-head">${avatar(d,'sm')}<div style="min-width:0"><strong>${esc(d.nombre)}</strong><div>${chip(d.deporte)}</div></div></div>
-        ${loadChart(wk,d.deporte,false)}${sumTxt(wk[7])}</article>`}).join('')}</div>`
+        ${loadChart(wk,d.deporte,false)}${sumTxt(wk[7])}${sinUmbral(d)?'<span class="badge warn" style="justify-self:start">Falta la FC umbral o en reposo</span>':''}</article>`}).join('')}</div>`
     :`<p class="muted">Cuando des de alta a los deportistas, aquí aparecerá la gráfica de cada uno.</p>`}</section>
   ${revisarHTML()}
   <div class="panel-grid">${recentCard}
@@ -592,8 +609,8 @@ function revisarHTML(){const hoy=todayISO();const d0=new Date();d0.setDate(d0.ge
   return `<section class="card" style="display:grid;gap:12px;margin-bottom:22px"><div class="card-head" style="margin:0"><h3>Para revisar</h3><span class="eyebrow">Últimos 14 días · incompletas o sin registrar</span></div>
     ${list.length?`<div class="rows">${list.slice(0,10).map(sesRow).join('')}</div>${list.length>10?`<p class="muted" style="font-size:13px">Y ${list.length-10} más en Sesiones.</p>`:''}`:'<p class="muted">Todo en orden: no hay sesiones incompletas ni sin registrar.</p>'}</section>`}
 function weeksLoad(list){const cur=weekStart(new Date()),weeks=[];
-  for(let i=7;i>=0;i--){const w=new Date(cur);w.setDate(w.getDate()-7*i);weeks.push({t:w.getTime(),d:w,v:0,n:0,min:0})}
-  list.forEach(s=>{if(!s.fecha)return;const t=weekStart(toDate(s.fecha)).getTime();const w=weeks.find(x=>x.t===t);if(w){w.v+=carga(s);w.n++;w.min+=durEf(s)}});
+  for(let i=7;i>=0;i--){const w=new Date(cur);w.setDate(w.getDate()-7*i);weeks.push({t:w.getTime(),d:w,v:0,n:0,min:0,sin:0})}
+  list.forEach(s=>{if(!s.fecha)return;const t=weekStart(toDate(s.fecha)).getTime();const w=weeks.find(x=>x.t===t);if(w){const h=hrTSS(s);w.v+=h?h.v:0;w.n++;w.min+=durEf(s);if(!h&&s.realizado)w.sin++}});
   return weeks}
 function loadChart(weeks,sport,big){
   const max=Math.max(0,...weeks.map(w=>w.v));
@@ -602,7 +619,7 @@ function loadChart(weeks,sport,big){
   const cls=SPORTS[sport]?SPORTS[sport].f:'f-run';
   let g='';for(let v=0;v<=ymax;v+=step){g+=`<line class="grid" x1="${L}" x2="${W-Rm}" y1="${y(v).toFixed(1)}" y2="${y(v).toFixed(1)}"/><text x="${L-6}" y="${(y(v)+4).toFixed(1)}" text-anchor="end">${n0.format(v)}</text>`}
   let bars='';weeks.forEach((w,i)=>{const x=L+i*bw+bw*.18,wd=bw*.64;
-    if(w.v){bars+=`<rect class="${cls}" x="${x.toFixed(1)}" y="${y(w.v).toFixed(1)}" width="${wd.toFixed(1)}" height="${(y(0)-y(w.v)).toFixed(1)}" rx="1.5"><title>Semana del ${pad(w.d.getDate())}/${pad(w.d.getMonth()+1)}: ${n0.format(w.v)} UA · ${w.n} sesiones</title></rect>`;
+    if(w.v){bars+=`<rect class="${cls}" x="${x.toFixed(1)}" y="${y(w.v).toFixed(1)}" width="${wd.toFixed(1)}" height="${(y(0)-y(w.v)).toFixed(1)}" rx="1.5"><title>Semana del ${pad(w.d.getDate())}/${pad(w.d.getMonth()+1)}: ${n0.format(w.v)} TSS · ${w.n} sesiones</title></rect>`;
       bars+=`<text class="tot" x="${(x+wd/2).toFixed(1)}" y="${(y(w.v)-4).toFixed(1)}" text-anchor="middle">${n0.format(w.v)}</text>`}
     if(big||i%2===1)bars+=`<text x="${(x+wd/2).toFixed(1)}" y="${H-7}" text-anchor="middle">${i===7?'Esta':pad(w.d.getDate())+'/'+pad(w.d.getMonth()+1)}</text>`});
   const none=max===0?`<text x="${L+iw/2}" y="${T+ih/2}" text-anchor="middle">Sin sesiones en 8 semanas</text>`:'';
@@ -625,7 +642,7 @@ R.sesiones=function(){
   ${isCoach?`<div class="toolbar">
     <label class="field"><span>Deportista</span><select id="f-dep"><option value="">Todos</option>${byName(S.deportistas).map(d=>`<option value="${esc(d.id)}" ${d.id===fDep?'selected':''}>${esc(d.nombre)}</option>`).join('')}</select></label>
     <label class="field"><span>Deporte</span><select id="f-sport"><option value="">Todos</option>${Object.keys(SPORTS).map(k=>`<option value="${k}" ${k===fSport?'selected':''}>${SPORTS[k].n}</option>`).join('')}</select></label>
-    <span class="eyebrow" style="margin-left:auto;padding-bottom:9px">${list.length} ${list.length===1?'sesión':'sesiones'} · ${n0.format(list.reduce((a,s)=>a+carga(s),0))} UA</span></div>`:''}
+    <span class="eyebrow" style="margin-left:auto;padding-bottom:9px">${list.length} ${list.length===1?'sesión':'sesiones'} · ${n0.format(list.reduce((a,s)=>a+carga(s),0))} TSS</span></div>`:''}
   ${groups.length?groups.map(g=>`<div class="day"><div class="eyebrow">${esc(fmtDay(g.f))}</div><div class="rows">${g.l.map(sesRow).join('')}</div></div>`).join('')
    :`<div class="empty"><strong>Sin sesiones</strong>${S.sesiones.length?'Ninguna sesión coincide con los filtros.':'Registra la primera sesión de entrenamiento.'}<br>${S.sesiones.length?'':'<button class="btn primary" data-action="new-sesion">Nueva sesión</button>'}</div>`}`;
 };
@@ -740,7 +757,8 @@ SH.deportista=function(arg){const id=arg&&arg.id;const d=(id&&depById(id))||{};c
     <div class="grid2">${field('Deporte',`<select id="dp-dep" name="deporte" required>${Object.keys(SPORTS).map(k=>opt(k,SPORTS[k].n,d.deporte===k)).join('')}</select>`)}
       ${field('Entrenador',`<select id="dp-ent" name="dniEntrenador"><option value="">Sin asignar</option>${ents.map(e=>opt(e.dni,e.nombre,d.dniEntrenador===e.dni||(!id&&ents.length===1))).join('')}</select>`)}</div>
     <div class="grid2">${field('FC máxima (ppm)',`<input id="dp-fcmax" name="fcMax" type="number" min="100" max="240" inputmode="numeric" value="${esc(d.fcMax||'')}">`,'<span id="dp-fc-hint"></span>')}
-      ${field('FC en reposo (ppm)',`<input id="dp-fcrep" name="fcReposo" type="number" min="25" max="110" inputmode="numeric" value="${esc(d.fcReposo||'')}">`)}</div>
+      ${field('FC en reposo (ppm)',`<input id="dp-fcrep" name="fcReposo" type="number" min="25" max="110" inputmode="numeric" value="${esc(d.fcReposo||'')}">`)}
+      ${field('FC umbral · LTHR (ppm)',`<input id="dp-fcumb" name="fcUmbral" type="number" min="80" max="230" inputmode="numeric" value="${esc(d.fcUmbral||'')}">`,'FC media de un esfuerzo máximo de 30 min (la de los últimos 20). Se usa para la carga hrTSS.')}</div>
     ${field('Objetivos',`<textarea id="dp-obj" name="objetivos" placeholder="Ej.: bajar de 7:40 en 2000 m K1 antes del campeonato">${esc(d.objetivos||'')}</textarea>`)}
     ${isCoach&&!id&&!link?'<p class="muted" style="font-size:13.5px">Al guardar se genera un código para que el deportista vincule su cuenta y vea solo sus datos.</p>':''}
     <p class="form-err"></p>
@@ -902,7 +920,7 @@ LIVE.sesion=function(id){const s=ses(id);if(!s)return `<p class="muted">Esta ses
     <div class="actions-row">${chip(d.deporte)}${isCoach?`<button class="btn small ghost" data-action="open-deportista" data-id="${esc(d.id||'')}">${esc(d.nombre||'Deportista')}</button>`:''}<span class="muted" style="font-size:13.5px">Diseñada por ${esc(e?e.nombre:(s.nombreEntrenador||'—'))}</span></div>
     <dl class="kv"><div><dt>Previsto · ${auto?'automático':'manual'}</dt><dd>${fmtMin(s.duracion)}</dd></div><div><dt>RPE previsto</dt><dd>${esc(s.rpe||'—')} <span class="muted" style="font-size:12px">${esc(RPE[s.rpe]||'')}</span></dd></div>
       ${r?`<div class="kv-real"><dt>Realizado</dt><dd>${r.duracion!=null?fmtMin(r.duracion):'—'} ${pc!=null?`<span class="zb ${cumplCls(pc)}">${pc} %</span>`:''}</dd></div><div class="kv-real"><dt>RPE real</dt><dd>${esc(r.rpe||'—')} <span class="muted" style="font-size:12px">${esc(RPE[r.rpe]||'')}</span></dd></div>`:''}
-      <div><dt>Carga sRPE${r?' real':''}</dt><dd>${n0.format(carga(s))} UA</dd></div></dl>
+      ${(()=>{const h=hrTSS(s);return `<div><dt>Carga hrTSS</dt><dd>${h?n0.format(h.v):'—'} <span class="muted" style="font-size:12px">${h?esc(h.src):!r?'al registrarla':sinUmbral(d)?'falta FC umbral':'falta FC'}</span></dd></div>`})()}</dl>
     ${r&&!ts.length?realLine(Object.assign({},r,{estado:pc===0?'no':pc!=null&&pc<90?'parcial':'completada',comentario:''}),+s.duracion||null,d):''}
     ${r&&r.comentario?`<p class="real-com">«${esc(r.comentario)}»</p>`:''}
     ${!r&&isCoach?`<p class="muted" style="font-size:13.5px">${s.fecha&&s.fecha<todayISO()?'<span class="hint-warn">El deportista aún no ha registrado lo que hizo.</span>':'Pendiente de que el deportista registre lo que hizo.'}</p>`:''}
@@ -1093,7 +1111,7 @@ function analisisHTML(s,d){const A=analisis(s,d);if(!A)return '';const W=anW();
     <div>${anChart(A,W)}</div>
     <div class="an-legend"><span><i></i>real</span>${A.real.some(p=>p.tgt)?'<span><i class="dash"></i>objetivo previsto</span>':''}<span class="zk">${zk}</span><span>% del test de referencia</span></div>
     <div class="an-foot"><div style="display:grid;gap:4px;min-width:0"><span class="eyebrow">Estructura prevista · ${fmtMin(A.P/60)}</span>${anPlan(A.pieces,A.P,Math.max(300,W-(W>560?250:0)))}</div>
-      <dl class="an-sum"><div><dt>Duración</dt><dd>${fmtTime(A.T)}</dd></div><div><dt>Carga</dt><dd>${n0.format(carga(s))}<small>UA</small></dd></div>
+      <dl class="an-sum"><div><dt>Duración</dt><dd>${fmtTime(A.T)}</dd></div><div><dt>hrTSS</dt><dd>${hrTSS(s)?n0.format(carga(s)):'—'}</dd></div>
         <div><dt>Intensidad${A.intReal?'':' prev.'}</dt><dd>${A.int!=null?n0.format(A.int)+'<small>%</small>':'—'}</dd></div><div><dt>${A.dist?'Distancia':'FC media'}</dt><dd>${A.dist?fmtDist(A.dist):A.fc?n0.format(A.fc)+'<small>ppm</small>':'—'}</dd></div></dl></div>
     ${A.tz&&A.real.length>1&&A.tz.t.length?`<p class="muted" style="font-size:12.5px">Los tramos previstos se ajustan a la duración del archivo (${fmtTime(A.T)}).</p>`:''}
     ${!A.tz&&!isCoach?'<p class="muted" style="font-size:13px">Sube el archivo GPX o TCX de tu reloj en «Lo que he hecho» para ver el ritmo, la FC y la altitud de toda la sesión.</p>':''}</div>`}
@@ -1113,14 +1131,15 @@ function fichaHTML(d){if(!d)return `<p class="muted">Este deportista ya no exist
   const e=ent(d.dniEntrenador);const ss=sortSes(S.sesiones.filter(s=>s.aid===d.id));const nt=(d.tests||[]).length;const a=age(d.fechaNacimiento);
   const parts=[ss.length?ss.length+' sesiones':'',nt?nt+' tests':''].filter(Boolean);
   return `<div class="sec"><div class="head-row">${avatar(d,'lg')}<div><span class="eyebrow mono">DNI ${esc(d.dni)}</span><h2 style="text-transform:none">${esc(d.nombre)}</h2><div class="actions-row" style="margin-top:4px">${chip(d.deporte)}${isCoach&&!d.cuenta?'<span class="badge warn">Sin cuenta</span>':''}</div></div></div>
-    <dl class="kv"><div><dt>Edad</dt><dd>${a!=null?a+' años':'—'}</dd></div><div><dt>Nacimiento</dt><dd>${esc(fmtDate(d.fechaNacimiento))}</dd></div><div><dt>FC máx · reposo</dt><dd>${esc(d.fcMax||'—')} · ${esc(d.fcReposo||'—')}</dd></div><div><dt>Entrenador</dt><dd style="font-family:var(--f-body)">${esc(e?e.nombre:'—')}</dd></div></dl>
+    <dl class="kv"><div><dt>Edad</dt><dd>${a!=null?a+' años':'—'}</dd></div><div><dt>Nacimiento</dt><dd>${esc(fmtDate(d.fechaNacimiento))}</dd></div><div><dt>FC máx · umbral · reposo</dt><dd>${esc(d.fcMax||'—')} · ${esc(d.fcUmbral||'—')} · ${esc(d.fcReposo||'—')}</dd></div><div><dt>Entrenador</dt><dd style="font-family:var(--f-body)">${esc(e?e.nombre:'—')}</dd></div></dl>
+    ${sinUmbral(d)?`<p class="hint-warn" style="font-size:13.5px">Falta la FC ${d.fcReposo?'umbral (LTHR)':'en reposo y la FC umbral (LTHR)'}: sin ${d.fcReposo?'ella':'ellas'} no se puede calcular la carga hrTSS. Añádela con «Editar».</p>`:''}
     ${d.objetivos?`<div><span class="eyebrow">Objetivos</span><p style="margin-top:4px;max-width:62ch">${esc(d.objetivos)}</p></div>`:''}
     ${isCoach&&!d.cuenta?`<div class="subform" style="display:grid;gap:8px"><span class="eyebrow">Código de vinculación</span><div class="actions-row"><span class="code">${esc(d.codigo||'—')}</span><button class="btn small ghost" data-action="new-code" data-id="${esc(d.id)}">Generar otro</button></div><p class="muted" style="font-size:13.5px">Dáselo a ${esc((d.nombre||'').split(' ')[0])}: al abrir la aplicación con su cuenta lo introduce y, cuando lo confirmes, verá solo sus datos.</p></div>`:''}
     <div class="actions-row"><button class="btn small primary" data-action="new-sesion" data-aid="${esc(d.id)}">Nueva sesión</button><button class="btn small" data-action="new-test" data-aid="${esc(d.id)}">Registrar test</button><button class="btn small" data-action="edit-deportista" data-id="${esc(d.id)}">Editar</button>${realCoach&&!viewAs?`<button class="btn small" data-action="view-as" data-id="${esc(d.id)}">Ver como deportista</button>`:''}
       ${isCoach?`<button class="btn small danger" data-action="del" data-kind="deportista" data-id="${esc(d.id)}" data-warn="${parts.length?'Pulsa otra vez: se borran '+parts.join(' y '):'Pulsa otra vez para eliminar'}">Eliminar</button>`:''}</div></div>
   <div class="sec"><h3>Tests de referencia (100 %)</h3>
     ${nt?refsTable(d,100)+`<small class="muted">Último resultado de cada test y su equivalencia al 100 %. El % de esfuerzo de cada tarea se calcula sobre estos valores.</small>`:`<p class="muted">${refsNeeded()}</p>`}</div>
-  <div class="sec"><div class="card-head" style="margin:0"><h3>Sesiones</h3><span class="eyebrow">${ss.length} · ${n0.format(ss.reduce((a,s)=>a+carga(s),0))} UA</span></div>
+  <div class="sec"><div class="card-head" style="margin:0"><h3>Sesiones</h3><span class="eyebrow">${ss.length} · ${n0.format(ss.reduce((a,s)=>a+carga(s),0))} TSS</span></div>
     ${ss.length?`<div class="rows">${ss.slice(0,8).map(sesRow).join('')}</div>`:`<p class="muted">Todavía no ha realizado ninguna sesión.</p>`}</div>`}
 SH.deportista_ver=function(){return `<div id="sheet-live" style="display:grid;gap:20px"></div>`};
 LIVE.deportista_ver=id=>fichaHTML(depById(id));
@@ -1166,8 +1185,10 @@ const SUBMIT={
   async deportista(f,fd){const id=fd.get('id'),link=fd.get('link');const dni=normDni(fd.get('dni'));const nombre=String(fd.get('nombre')).trim();
     if(!nombre)return formErr(f,'Escribe el nombre del deportista.');if(!dni)return formErr(f,'Escribe el DNI del deportista.');
     if(!id&&isCoach&&S.deportistas.some(d=>d.dni===dni))return formErr(f,'Ya hay un deportista con ese DNI.');
-    const fcMax=num(fd.get('fcMax')),fcReposo=num(fd.get('fcReposo'));if(fcMax&&fcReposo&&fcReposo>=fcMax)return formErr(f,'La FC en reposo tiene que ser menor que la FC máxima.');
-    const base={dni,nombre,foto:fd.get('foto')||'',fechaNacimiento:fd.get('fechaNacimiento')||'',deporte:fd.get('deporte'),objetivos:String(fd.get('objetivos')).trim(),fcMax,fcReposo,dniEntrenador:fd.get('dniEntrenador')||''};
+    const fcMax=num(fd.get('fcMax')),fcReposo=num(fd.get('fcReposo')),fcUmbral=num(fd.get('fcUmbral'));if(fcMax&&fcReposo&&fcReposo>=fcMax)return formErr(f,'La FC en reposo tiene que ser menor que la FC máxima.');
+    if(fcUmbral&&fcReposo&&fcUmbral<=fcReposo)return formErr(f,'La FC umbral tiene que ser mayor que la FC en reposo.');
+    if(fcUmbral&&fcMax&&fcUmbral>fcMax)return formErr(f,'La FC umbral no puede ser mayor que la FC máxima.');
+    const base={dni,nombre,foto:fd.get('foto')||'',fechaNacimiento:fd.get('fechaNacimiento')||'',deporte:fd.get('deporte'),objetivos:String(fd.get('objetivos')).trim(),fcMax,fcReposo,fcUmbral,dniEntrenador:fd.get('dniEntrenador')||''};
     let nid=id;
     if(id)await W('update',pAt(id),base);
     else if(!isCoach){nid=myId;await W('set',pAt(myId),Object.assign(base,{cuenta:true,pendiente:false,codigo:'',tests:[]}))}
