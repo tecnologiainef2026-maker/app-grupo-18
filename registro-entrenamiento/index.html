@@ -386,6 +386,29 @@ function hrTSS(s){const r=s.realizado;const d=depById(s.aid)||{};if(!r||sinUmbra
   const media=known.reduce((a,g)=>a+g.fc*g.min,0)/known.reduce((a,g)=>a+g.min,0);
   return {v:segs.reduce((a,g)=>a+g.min/60*hrIF(g.fc>0?g.fc:media,d)**2*100,0),src:'FC anotada'}}
 const carga=s=>{const h=hrTSS(s);return h?h.v:0};
+/* Carga estimada (antes de entrenar): el mismo hrTSS, con el hrIF que se espera en cada tramo del plan.
+   · Intensidad respecto al umbral = % de la tarea × (test de la tarea / umbral del deportista).
+     El umbral es la FTP en potencia y la contrarreloj de 30 min en velocidad. Si el deportista no
+     tiene contrarreloj de 30 min, se usan factores aproximados (REL_UMBRAL). VO₂ máx: umbral ≈ 85 %.
+   · El hrIF esperado no puede pasar del que da la FC máxima: (FC máx − reposo) / (umbral − reposo).
+   · Descansos entre series: hrIF 0,55. Tareas sin % de esfuerzo: hrIF según el RPE previsto. */
+const REL_UMBRAL={ftp:1,cr30:1,cr2000:1.1,sp200:1.35};
+const IF_DESCANSO=0.55, ifRPE=r=>0.45+0.06*(+r||5);
+function relUmbral(ref,pct,d){if(!ref||!(pct>0))return null;
+  if(ref.tipo==='vo2')return pct/85;
+  if(ref.tipo==='ftp')return pct/100;
+  const v=velTest(ref),thr=lastTest(d,'cr30');
+  if(v&&thr&&thr.valor>0)return pct/100*v/velTest(thr);
+  return pct/100*(REL_UMBRAL[ref.tipo]||1)}
+function estTSS(s){const d=depById(s.aid)||{};if(sinUmbral(d))return null;
+  const tope=+d.fcMax>+d.fcUmbral?(d.fcMax-d.fcReposo)/(d.fcUmbral-d.fcReposo):1.15;
+  const ifR=Math.min(tope,ifRPE(s.rpe));
+  const {pieces}=anPieces(Object.assign({},s,{realizado:null}),d);
+  let a=0,t=0,conPct=0;
+  pieces.forEach(p=>{if(!(p.plan>0))return;const rel=p.kind==='rest'?IF_DESCANSO:relUmbral(p.ref,p.pct,d);if(rel!=null&&p.kind==='work')conPct+=p.plan;
+    a+=p.plan/3600*Math.min(tope,rel??ifR)**2*100;t+=p.plan});
+  if(!t){const m=+s.duracion||0;return m?{v:m/60*ifR**2*100,src:'según el RPE previsto'}:null}
+  return {v:a,src:conPct?'según el % de esfuerzo de las tareas':'según el RPE previsto'}}
 const FORMULA='hrTSS = horas × hrIF² × 100';
 function cumpl(s){const r=s.realizado;if(!r||r.duracion==null)return null;const p=+s.duracion||0;return p?Math.round(100*(+r.duracion)/p):null}
 function cumplCls(p){return p==null?'':p>=90?'cb-ok':p>=50?'cb-warn':'cb-bad'}
@@ -630,7 +653,7 @@ function sesRow(s){const d=depById(s.aid)||{};const nt=(s.tareas||[]).length;
   return `<button class="row sp-${esc(d.deporte||'')}" data-action="open-sesion" data-id="${esc(s.id)}">
     <span class="bar"></span>
     <span class="main"><strong>${esc(isCoach?(d.nombre||'Deportista'):(s.objetivo||'Sesión'))}</strong><span>${esc(isCoach?(s.objetivo||'Sin objetivo'):(SPORTS[d.deporte]?SPORTS[d.deporte].n:''))}</span></span>
-    <span class="meta"><span class="badge">${esc(fmtDate(s.fecha,{day:'numeric',month:'short'}))} ${esc(s.hora||'')}</span><span class="badge">${s.realizado&&s.realizado.duracion!=null?n0.format(+s.realizado.duracion)+' / '+n0.format(+s.duracion||0)+' min':fmtMin(s.duracion)}</span>${rpeEf(s)?`<span class="rpe" style="background:${rpeColor(rpeEf(s))}">RPE ${esc(rpeEf(s))}</span>`:''}<span class="badge">${nt} ${nt===1?'tarea':'tareas'}</span>${estadoSes(s)}</span></button>`}
+    <span class="meta"><span class="badge">${esc(fmtDate(s.fecha,{day:'numeric',month:'short'}))} ${esc(s.hora||'')}</span><span class="badge">${s.realizado&&s.realizado.duracion!=null?n0.format(+s.realizado.duracion)+' / '+n0.format(+s.duracion||0)+' min':fmtMin(s.duracion)}</span>${rpeEf(s)?`<span class="rpe" style="background:${rpeColor(rpeEf(s))}">RPE ${esc(rpeEf(s))}</span>`:''}${(()=>{const h=hrTSS(s),e=h?null:estTSS(s);return h?`<span class="badge">${n0.format(h.v)} TSS</span>`:e?`<span class="badge" title="Carga estimada ${esc(e.src)}">≈ ${n0.format(e.v)} TSS</span>`:''})()}<span class="badge">${nt} ${nt===1?'tarea':'tareas'}</span>${estadoSes(s)}</span></button>`}
 
 R.sesiones=function(){
   let list=sortSes(S.sesiones);
@@ -920,10 +943,12 @@ LIVE.sesion=function(id){const s=ses(id);if(!s)return `<p class="muted">Esta ses
     <div class="actions-row">${chip(d.deporte)}${isCoach?`<button class="btn small ghost" data-action="open-deportista" data-id="${esc(d.id||'')}">${esc(d.nombre||'Deportista')}</button>`:''}<span class="muted" style="font-size:13.5px">Diseñada por ${esc(e?e.nombre:(s.nombreEntrenador||'—'))}</span></div>
     <dl class="kv"><div><dt>Previsto · ${auto?'automático':'manual'}</dt><dd>${fmtMin(s.duracion)}</dd></div><div><dt>RPE previsto</dt><dd>${esc(s.rpe||'—')} <span class="muted" style="font-size:12px">${esc(RPE[s.rpe]||'')}</span></dd></div>
       ${r?`<div class="kv-real"><dt>Realizado</dt><dd>${r.duracion!=null?fmtMin(r.duracion):'—'} ${pc!=null?`<span class="zb ${cumplCls(pc)}">${pc} %</span>`:''}</dd></div><div class="kv-real"><dt>RPE real</dt><dd>${esc(r.rpe||'—')} <span class="muted" style="font-size:12px">${esc(RPE[r.rpe]||'')}</span></dd></div>`:''}
-      ${(()=>{const h=hrTSS(s);return `<div><dt>Carga hrTSS</dt><dd>${h?n0.format(h.v):'—'} <span class="muted" style="font-size:12px">${h?esc(h.src):!r?'al registrarla':sinUmbral(d)?'falta FC umbral':'falta FC'}</span></dd></div>`})()}</dl>
+      ${(()=>{const e=estTSS(s);return `<div><dt>Carga estimada</dt><dd>${e?'≈ '+n0.format(e.v):'—'} <span class="muted" style="font-size:12px">${e?'TSS':sinUmbral(d)?'falta FC umbral':''}</span></dd></div>`})()}
+      ${(()=>{const h=hrTSS(s);return `<div${r?' class="kv-real"':''}><dt>Carga hrTSS real</dt><dd>${h?n0.format(h.v):'—'} <span class="muted" style="font-size:12px">${h?esc(h.src):!r?'al registrarla':sinUmbral(d)?'falta FC umbral':'falta FC'}</span></dd></div>`})()}</dl>
     ${r&&!ts.length?realLine(Object.assign({},r,{estado:pc===0?'no':pc!=null&&pc<90?'parcial':'completada',comentario:''}),+s.duracion||null,d):''}
     ${r&&r.comentario?`<p class="real-com">«${esc(r.comentario)}»</p>`:''}
     ${!r&&isCoach?`<p class="muted" style="font-size:13.5px">${s.fecha&&s.fecha<todayISO()?'<span class="hint-warn">El deportista aún no ha registrado lo que hizo.</span>':'Pendiente de que el deportista registre lo que hizo.'}</p>`:''}
+    ${(()=>{const e=estTSS(s);return e?`<p class="muted" style="font-size:12.5px">Carga estimada ${esc(e.src)}, con la FC umbral (${esc(d.fcUmbral)} ppm) y en reposo (${esc(d.fcReposo)} ppm) de ${esc((d.nombre||'').split(' ')[0])}.</p>`:''})()}
     ${!auto&&ts.length&&Math.round(calc)!==Math.round(+s.duracion||0)?`<p class="muted" style="font-size:13.5px">La suma de las tareas da ${fmtMin(calc)}.</p>`:''}
     ${own?`<div class="actions-row"><button class="btn small" data-action="edit-sesion" data-id="${esc(id)}">Editar sesión</button><button class="btn small" data-action="dur-edit" data-id="${esc(id)}">Editar duración</button><button class="btn small danger" data-action="del" data-kind="sesion" data-id="${esc(id)}" data-warn="${ts.length?`Pulsa otra vez: se borran también ${ts.length} tareas`:'Pulsa otra vez para eliminar'}">Eliminar sesión</button></div>`:''}</div>
   ${r?analisisHTML(s,d):(()=>{const pl=anPieces(s,d);return pl.P>0&&ts.length?`<div class="sec"><div class="card-head" style="margin:0"><h3>Estructura prevista</h3><span class="eyebrow">${fmtMin(pl.P/60)} · % de esfuerzo por tramo</span></div>${anPlan(pl.pieces,pl.P,anW())}</div>`:''})()}

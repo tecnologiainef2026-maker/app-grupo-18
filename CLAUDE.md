@@ -6,7 +6,7 @@ NEXØ sirve para **prescribir entrenamientos y registrar las sesiones de nuestro
 
 - **El entrenador** da de alta a los deportistas, registra sus tests (FTP, VO₂ máx, contrarreloj de 30 min, contrarreloj de 2000 m, sprint de 200 m) y diseña sesiones con tareas. Cada tarea lleva un % de esfuerzo sobre un test de referencia.
 - **El deportista** ve solo sus datos y anota lo que ha hecho en cada sesión: minutos, ritmo, FC, RPE y, si quiere, el archivo GPX o TCX de su reloj.
-- La app calcula la carga con el **hrTSS** (`hrTSS = horas × hrIF² × 100`, con `hrIF = (FC media − FC reposo) / (FC umbral − FC reposo)`), el % de cumplimiento y un análisis de cada sesión con zonas de esfuerzo. Para la carga, cada deportista necesita su FC en reposo y su FC umbral (LTHR).
+- La app calcula la carga con el **hrTSS** (`hrTSS = horas × hrIF² × 100`, con `hrIF = (FC media − FC reposo) / (FC umbral − FC reposo)`), el % de cumplimiento y un análisis de cada sesión con zonas de esfuerzo. Para la carga, cada deportista necesita su FC en reposo y su FC umbral (LTHR). Antes de entrenar, cada sesión muestra una **carga estimada** con la misma fórmula: el hrIF esperado sale del % de esfuerzo de cada tarea respecto al umbral del deportista (sin pasar del que permite su FC máxima), los descansos cuentan como suaves y las tareas sin % usan el RPE previsto.
 
 ## Miembros del grupo
 
