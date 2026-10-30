@@ -6,7 +6,9 @@
 -- Idea general:
 --   · Sin sesión iniciada (rol anon) no se puede leer ni escribir nada.
 --   · Un ENTRENADOR (su usuario está en entrenadores.usuario_id) ve y
---     gestiona los datos de todos los deportistas del grupo.
+--     gestiona SOLO los datos de SUS deportistas (deportistas.dni_entrenador
+--     = su DNI). También ve a los deportistas sin entrenador, para poder
+--     asignárselos.
 --   · Un DEPORTISTA (su usuario está en deportistas.usuario_id) solo ve
 --     sus propios datos, registra lo que ha hecho y puede crear sus
 --     propias sesiones y tests.
@@ -36,6 +38,27 @@ as $$
   );
 $$;
 
+-- DNI del entrenador conectado (null si no es entrenador).
+create or replace function privado.mi_dni_entrenador()
+returns text
+language sql stable security definer set search_path = ''
+as $$
+  select dni from public.entrenadores
+  where usuario_id = (select auth.uid());
+$$;
+
+-- ¿Este deportista es del entrenador conectado?
+create or replace function privado.es_mi_deportista(p_dni text)
+returns boolean
+language sql stable security definer set search_path = ''
+as $$
+  select exists (
+    select 1 from public.deportistas
+    where dni = p_dni
+      and dni_entrenador = privado.mi_dni_entrenador()
+  );
+$$;
+
 -- DNI del deportista conectado (null si no es deportista).
 create or replace function privado.mi_dni_deportista()
 returns text
@@ -45,34 +68,35 @@ as $$
   where usuario_id = (select auth.uid());
 $$;
 
--- ¿Puede el usuario VER esta sesión? (entrenador, o el deportista que la realiza)
+-- ¿Puede el usuario VER esta sesión? (el entrenador del deportista, o el propio deportista)
 create or replace function privado.puede_ver_sesion(p_id_sesion bigint)
 returns boolean
 language sql stable security definer set search_path = ''
 as $$
-  select privado.es_entrenador() or exists (
+  select exists (
     select 1 from public.sesiones s
     where s.id = p_id_sesion
-      and s.dni_deportista = privado.mi_dni_deportista()
+      and (privado.es_mi_deportista(s.dni_deportista)
+           or s.dni_deportista = privado.mi_dni_deportista())
   );
 $$;
 
 -- ¿Puede el usuario CAMBIAR el plan de esta sesión (sus tareas)?
--- El entrenador siempre; el deportista solo si la sesión la creó él.
+-- Su entrenador siempre; el deportista solo si la sesión la creó él.
 create or replace function privado.puede_editar_sesion(p_id_sesion bigint)
 returns boolean
 language sql stable security definer set search_path = ''
 as $$
-  select privado.es_entrenador() or exists (
+  select exists (
     select 1 from public.sesiones s
     where s.id = p_id_sesion
-      and s.dni_deportista = privado.mi_dni_deportista()
-      and s.creada_por = 'deportista'
+      and (privado.es_mi_deportista(s.dni_deportista)
+           or (s.dni_deportista = privado.mi_dni_deportista() and s.creada_por = 'deportista'))
   );
 $$;
 
 -- ¿Puede el usuario REGISTRAR lo realizado en esta sesión?
--- El deportista que la realiza, o un entrenador que lo hace por él.
+-- El deportista que la realiza, o su entrenador que lo hace por él.
 create or replace function privado.puede_registrar_sesion(p_id_sesion bigint)
 returns boolean
 language sql stable security definer set search_path = ''
@@ -109,7 +133,8 @@ alter table public.trazas              enable row level security;
 -- ---------------------------------------------------------------------
 -- 3. ENTRENADORES
 -- ---------------------------------------------------------------------
--- Cualquier usuario con sesión ve la lista (el deportista ve el nombre de su entrenador).
+-- Cualquier usuario con sesión ve la lista de entrenadores (nombre, especialidad):
+-- el deportista necesita ver el de su entrenador y elegirlo al crear su ficha.
 create policy "entrenadores: ver con sesion iniciada"
   on public.entrenadores for select to authenticated
   using (true);
@@ -131,57 +156,93 @@ create policy "entrenadores: editar la propia"
 -- ---------------------------------------------------------------------
 -- 4. DEPORTISTAS
 -- ---------------------------------------------------------------------
-create policy "deportistas: ver entrenador o el propio"
+-- El entrenador ve a sus deportistas y a los que aún no tienen entrenador
+-- (para poder asignárselos). El deportista ve solo su ficha.
+create policy "deportistas: ver"
   on public.deportistas for select to authenticated
-  using (privado.es_entrenador() or usuario_id = (select auth.uid()));
+  using (
+    dni_entrenador = privado.mi_dni_entrenador()
+    or (dni_entrenador is null and privado.es_entrenador())
+    or usuario_id = (select auth.uid())
+  );
 
--- El entrenador da de alta a cualquier deportista; un deportista solo su propia ficha.
+-- El entrenador da de alta deportistas suyos; un deportista solo su propia ficha.
 create policy "deportistas: alta"
   on public.deportistas for insert to authenticated
-  with check (privado.es_entrenador() or usuario_id = (select auth.uid()));
+  with check (
+    dni_entrenador = privado.mi_dni_entrenador()
+    or usuario_id = (select auth.uid())
+  );
 
-create policy "deportistas: editar entrenador o el propio"
+-- El entrenador edita a los suyos y a los que no tienen entrenador (puede
+-- asignárselos o pasárselos a otro entrenador). El deportista, su ficha.
+create policy "deportistas: editar"
   on public.deportistas for update to authenticated
-  using (privado.es_entrenador() or usuario_id = (select auth.uid()))
+  using (
+    dni_entrenador = privado.mi_dni_entrenador()
+    or (dni_entrenador is null and privado.es_entrenador())
+    or usuario_id = (select auth.uid())
+  )
   with check (privado.es_entrenador() or usuario_id = (select auth.uid()));
 
-create policy "deportistas: borrar solo entrenador"
+create policy "deportistas: borrar solo su entrenador"
   on public.deportistas for delete to authenticated
-  using (privado.es_entrenador());
+  using (dni_entrenador = privado.mi_dni_entrenador());
+
+-- Un deportista no puede cambiarse de entrenador él solo: eso lo hace un entrenador.
+-- Las políticas no pueden comparar el valor antiguo con el nuevo, así que se
+-- comprueba con un trigger (una función que se ejecuta antes de cada UPDATE).
+create or replace function privado.bloquear_cambio_entrenador()
+returns trigger
+language plpgsql security definer set search_path = ''
+as $$
+begin
+  if new.dni_entrenador is distinct from old.dni_entrenador
+     and (select auth.uid()) is not null
+     and not privado.es_entrenador() then
+    raise exception 'Solo un entrenador puede cambiar el entrenador de un deportista';
+  end if;
+  return new;
+end;
+$$;
+
+create trigger deportistas_bloquear_cambio_entrenador
+  before update on public.deportistas
+  for each row execute function privado.bloquear_cambio_entrenador();
 
 -- ---------------------------------------------------------------------
 -- 5. TESTS
 -- ---------------------------------------------------------------------
-create policy "tests: ver entrenador o el propio"
+create policy "tests: ver su entrenador o el propio"
   on public.tests for select to authenticated
-  using (privado.es_entrenador() or dni_deportista = privado.mi_dni_deportista());
+  using (privado.es_mi_deportista(dni_deportista) or dni_deportista = privado.mi_dni_deportista());
 
 create policy "tests: registrar entrenador o el propio"
   on public.tests for insert to authenticated
-  with check (privado.es_entrenador() or dni_deportista = privado.mi_dni_deportista());
+  with check (privado.es_mi_deportista(dni_deportista) or dni_deportista = privado.mi_dni_deportista());
 
 create policy "tests: editar entrenador o el propio"
   on public.tests for update to authenticated
-  using (privado.es_entrenador() or dni_deportista = privado.mi_dni_deportista())
-  with check (privado.es_entrenador() or dni_deportista = privado.mi_dni_deportista());
+  using (privado.es_mi_deportista(dni_deportista) or dni_deportista = privado.mi_dni_deportista())
+  with check (privado.es_mi_deportista(dni_deportista) or dni_deportista = privado.mi_dni_deportista());
 
 create policy "tests: borrar entrenador o el propio"
   on public.tests for delete to authenticated
-  using (privado.es_entrenador() or dni_deportista = privado.mi_dni_deportista());
+  using (privado.es_mi_deportista(dni_deportista) or dni_deportista = privado.mi_dni_deportista());
 
 -- ---------------------------------------------------------------------
 -- 6. SESIONES
 -- ---------------------------------------------------------------------
 create policy "sesiones: ver entrenador o el deportista"
   on public.sesiones for select to authenticated
-  using (privado.es_entrenador() or dni_deportista = privado.mi_dni_deportista());
+  using (privado.es_mi_deportista(dni_deportista) or dni_deportista = privado.mi_dni_deportista());
 
--- El entrenador crea sesiones para cualquiera; el deportista solo para sí
--- mismo y marcadas como creadas por él.
+-- El entrenador crea sesiones para sus deportistas; el deportista solo para
+-- sí mismo y marcadas como creadas por él.
 create policy "sesiones: crear"
   on public.sesiones for insert to authenticated
   with check (
-    privado.es_entrenador()
+    privado.es_mi_deportista(dni_deportista)
     or (dni_deportista = privado.mi_dni_deportista() and creada_por = 'deportista')
   );
 
@@ -189,7 +250,7 @@ create policy "sesiones: editar"
   on public.sesiones for update to authenticated
   using (privado.puede_editar_sesion(id))
   with check (
-    privado.es_entrenador()
+    privado.es_mi_deportista(dni_deportista)
     or (dni_deportista = privado.mi_dni_deportista() and creada_por = 'deportista')
   );
 
@@ -236,7 +297,7 @@ create policy "partes_tarea: borrar"
 
 -- ---------------------------------------------------------------------
 -- 8. LO REALIZADO (sesiones_realizadas, tareas_realizadas, trazas)
--- Lo ven y lo escriben el deportista de la sesión y los entrenadores.
+-- Lo ven y lo escriben el deportista de la sesión y su entrenador.
 -- ---------------------------------------------------------------------
 create policy "sesiones_realizadas: ver"
   on public.sesiones_realizadas for select to authenticated

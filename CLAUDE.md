@@ -39,7 +39,8 @@ Tablas en PostgreSQL (Supabase), con nombres en español, en minúsculas y sin t
 | `trazas` | Puntos del archivo del reloj (jsonb) | `id_sesion` | `sesiones_realizadas` |
 
 - `entrenadores.usuario_id` y `deportistas.usuario_id` enlazan cada ficha con su cuenta de Supabase Auth. La seguridad (RLS) usa ese enlace para saber quién es quién.
-- Un entrenador tiene muchos deportistas. Un deportista tiene muchas sesiones y tests. Una sesión tiene muchas tareas.
+- Un deportista tiene **un solo entrenador**, y un entrenador tiene muchos deportistas. Un deportista tiene muchas sesiones y tests. Una sesión tiene muchas tareas.
+- **Cada entrenador ve solo a sus deportistas** (y a los que aún no tienen entrenador, para poder asignárselos). Cada deportista ve solo sus datos.
 - La relación muchos a muchos entre entrenadores y deportistas («el entrenador diseña sesiones para el deportista») se resuelve con la tabla `sesiones`.
 - Las migraciones están en `supabase/migraciones/`:
   - `001_tablas.sql` crea las tablas.
